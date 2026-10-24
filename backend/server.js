@@ -174,7 +174,7 @@ app.post("/api/posts", requireAuth, async (req, res) => {
 
 
 
- // Register a new user
+// Register a new user
 app.post("/api/auth/register", async (req, res) => {
     const {
         username,
@@ -331,8 +331,8 @@ app.post("/api/auth/login", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Login error:", error.message);
-
+        console.error("Registration error:", error);
+        console.error(error?.stack);
         return res.status(500).json({
             error: "Unable to log in"
         });
@@ -341,7 +341,7 @@ app.post("/api/auth/login", async (req, res) => {
 
 
 
- // Get the currently logged-in user's profile
+// Get the currently logged-in user's profile
 app.get("/api/users/me", requireAuth, async (req, res) => {
     try {
         const [rows] = await db.execute(

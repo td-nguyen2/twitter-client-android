@@ -6,13 +6,16 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
-import com.example.twitterclient.ui.profile.ProfileFragment;
 import com.example.twitterclient.auth.SessionManager;
+import com.example.twitterclient.model.Tweet;
 import com.example.twitterclient.ui.auth.LoginFragment;
 import com.example.twitterclient.ui.auth.RegisterFragment;
+import com.example.twitterclient.ui.profile.ProfileFragment;
+import com.example.twitterclient.ui.timeline.PostDetailFragment;
 import com.example.twitterclient.ui.timeline.TimelineFragment;
 
 public class MainActivity extends AppCompatActivity {
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,26 +24,66 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         if (savedInstanceState == null) {
-
-            SessionManager session =
-                    new SessionManager(this);
+            SessionManager session = new SessionManager(this);
 
             if (session.isLoggedIn()) {
                 showTimeline();
             } else {
                 showLogin();
+
+                // TEMPORARY TEST: open Post View without logging in
+                android.widget.Button testButton =
+                        new android.widget.Button(this);
+                testButton.setText("Test Post View");
+
+                android.widget.FrameLayout container =
+                        findViewById(R.id.fragment_container);
+
+                android.widget.FrameLayout.LayoutParams params =
+                        new android.widget.FrameLayout.LayoutParams(
+                                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
+                        );
+
+                params.gravity = android.view.Gravity.BOTTOM
+                        | android.view.Gravity.CENTER_HORIZONTAL;
+                params.bottomMargin = 40;
+
+                container.addView(testButton, params);
+
+                testButton.setOnClickListener(v -> {
+                    com.example.twitterclient.model.Tweet sampleTweet =
+                            new com.example.twitterclient.model.Tweet(
+                                    1L,
+                                    "Demo User",
+                                    "demo_user",
+                                    "This is a sample post. I am testing the Post View screen!"
+                            );
+
+                    showPostDetail(sampleTweet);
+                });
             }
         }
     }
+
+
     public void showProfile() {
         openFragment(new ProfileFragment());
     }
 
-
     public void showUserProfile(String username) {
-        openFragment(
-                ProfileFragment.forUsername(username)
-        );
+        openFragment(ProfileFragment.forUsername(username));
+    }
+
+    public void showPostDetail(Tweet tweet) {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(
+                        R.id.fragment_container,
+                        PostDetailFragment.newInstance(tweet)
+                )
+                .addToBackStack(null)
+                .commit();
     }
 
     private void openFragment(Fragment fragment) {

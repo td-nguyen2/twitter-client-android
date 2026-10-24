@@ -1,3 +1,4 @@
+
 package com.example.twitterclient.repository;
 
 import android.content.Context;
@@ -28,16 +29,19 @@ public class TweetRepository {
             try {
                 JSONArray posts = response.getJSONArray("posts");
                 List<Tweet> result = new ArrayList<>();
+
                 for (int i = 0; i < posts.length(); i++) {
                     result.add(toTweet(posts.getJSONObject(i)));
                 }
+
                 callback.onSuccess(result);
             } catch (JSONException error) {
-                callback.onError("Invalid server response: " + error.getMessage());
+                callback.onError(
+                        "Invalid server response: " + error.getMessage()
+                );
             }
         }, error -> callback.onError(describe(error)));
     }
-
 
     public void createTweet(
             String content,
@@ -71,16 +75,20 @@ public class TweetRepository {
         }
     }
 
-
     private static Tweet toTweet(JSONObject item) throws JSONException {
+        long id = item.getLong("id");
         String username = item.getString("username");
-        return new Tweet(username, username, item.getString("content"));
+        String content = item.getString("content");
+
+        return new Tweet(id, username, username, content);
     }
 
     private static String describe(VolleyError error) {
         if (error.networkResponse != null) {
-            return "HTTP " + error.networkResponse.statusCode + " from server";
+            return "HTTP " + error.networkResponse.statusCode
+                    + " from server";
         }
+
         return "Cannot reach server. Is Express running on port 3000?";
     }
 }
