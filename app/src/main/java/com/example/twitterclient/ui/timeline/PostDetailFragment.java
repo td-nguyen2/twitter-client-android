@@ -239,9 +239,10 @@ public class PostDetailFragment extends Fragment {
                 continue;
             }
 
-            String displayName = reply.optString("displayName", "");
             String username = reply.optString("username", "");
             String content = reply.optString("content", "");
+
+            String displayName = username.isEmpty() ? "User" : username;
 
             if (displayName.isEmpty()) {
                 displayName = username.isEmpty() ? "User" : username;

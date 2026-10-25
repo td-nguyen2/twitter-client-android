@@ -2,6 +2,9 @@
 package com.example.twitterclient;
 
 import android.os.Bundle;
+import android.view.Gravity;
+import android.widget.Button;
+import android.widget.FrameLayout;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -16,11 +19,9 @@ import com.example.twitterclient.ui.timeline.TimelineFragment;
 
 public class MainActivity extends AppCompatActivity {
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_main);
 
         if (savedInstanceState == null) {
@@ -31,34 +32,32 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 showLogin();
 
-                // TEMPORARY TEST: open Post View without logging in
-                android.widget.Button testButton =
-                        new android.widget.Button(this);
+                // TEMPORARY TEST: Open Post View without logging in
+                Button testButton = new Button(this);
                 testButton.setText("Test Post View");
 
-                android.widget.FrameLayout container =
+                FrameLayout container =
                         findViewById(R.id.fragment_container);
 
-                android.widget.FrameLayout.LayoutParams params =
-                        new android.widget.FrameLayout.LayoutParams(
-                                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
-                                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
+                FrameLayout.LayoutParams params =
+                        new FrameLayout.LayoutParams(
+                                FrameLayout.LayoutParams.WRAP_CONTENT,
+                                FrameLayout.LayoutParams.WRAP_CONTENT
                         );
 
-                params.gravity = android.view.Gravity.BOTTOM
-                        | android.view.Gravity.CENTER_HORIZONTAL;
+                params.gravity =
+                        Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
                 params.bottomMargin = 40;
 
                 container.addView(testButton, params);
 
                 testButton.setOnClickListener(v -> {
-                    com.example.twitterclient.model.Tweet sampleTweet =
-                            new com.example.twitterclient.model.Tweet(
-                                    1L,
-                                    "Demo User",
-                                    "demo_user",
-                                    "This is a sample post. I am testing the Post View screen!"
-                            );
+                    Tweet sampleTweet = new Tweet(
+                            2L,
+                            "Demo User",
+                            "demo_user",
+                            "This is a test post for Post View and Replies."
+                    );
 
                     showPostDetail(sampleTweet);
                 });
@@ -66,31 +65,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     public void showProfile() {
         openFragment(new ProfileFragment());
     }
 
     public void showUserProfile(String username) {
         openFragment(ProfileFragment.forUsername(username));
-    }
-
-    public void showPostDetail(Tweet tweet) {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(
-                        R.id.fragment_container,
-                        PostDetailFragment.newInstance(tweet)
-                )
-                .addToBackStack(null)
-                .commit();
-    }
-
-    private void openFragment(Fragment fragment) {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.fragment_container, fragment)
-                .commit();
     }
 
     public void showLogin() {
@@ -103,5 +83,25 @@ public class MainActivity extends AppCompatActivity {
 
     public void showTimeline() {
         openFragment(new TimelineFragment());
+    }
+
+    // Open Post Detail screen
+    public void showPostDetail(Tweet tweet) {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(
+                        R.id.fragment_container,
+                        PostDetailFragment.newInstance(tweet)
+                )
+                .addToBackStack(null)
+                .commit();
+    }
+
+    // Helper method to switch fragments
+    private void openFragment(Fragment fragment) {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .commit();
     }
 }

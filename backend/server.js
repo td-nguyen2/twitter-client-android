@@ -563,6 +563,214 @@ app.patch("/api/users/me", requireAuth, async (req, res) => {
 });
 
 
+/* ================= REPLY API ================= */
+
+// Get replies for a post
+app.get("/api/posts/:id/replies", async (req, res) => {
+    const postId = Number(req.params.id);
+
+    if (!Number.isSafeInteger(postId) || postId <= 0) {
+        return res.status(400).json({ error: "Invalid post ID" });
+    }
+
+    try {
+        const [posts] = await db.execute(
+            "SELECT id FROM posts WHERE id = ?",
+            [postId]
+        );
+
+        if (posts.length === 0) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const [replies] = await db.execute(
+            `SELECT id, post_id AS postId, username,
+                    content, created_at AS createdAt
+             FROM post_replies
+             WHERE post_id = ?
+             ORDER BY created_at ASC, id ASC`,
+            [postId]
+        );
+
+        return res.json({ replies });
+    } catch (error) {
+        console.error("Get replies error:", error.message);
+        return res.status(500).json({ error: "Unable to retrieve replies" });
+    }
+});
+
+// Create a reply
+app.post("/api/posts/:id/replies", requireAuth, async (req, res) => {
+    const postId = Number(req.params.id);
+    const { content } = req.body || {};
+
+    if (!Number.isSafeInteger(postId) || postId <= 0) {
+        return res.status(400).json({ error: "Invalid post ID" });
+    }
+
+    if (
+        typeof content !== "string" ||
+        !content.trim() ||
+        content.trim().length > 280
+    ) {
+        return res.status(400).json({
+            error: "Reply must contain 1-280 characters"
+        });
+    }
+
+    try {
+        const [posts] = await db.execute(
+            "SELECT id FROM posts WHERE id = ?",
+            [postId]
+        );
+
+        if (posts.length === 0) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const [result] = await db.execute(
+            `INSERT INTO post_replies (post_id, username, content)
+             VALUES (?, ?, ?)`,
+            [postId, req.authUser.username, content.trim()]
+        );
+
+        const [rows] = await db.execute(
+            `SELECT id, post_id AS postId, username,
+                    content, created_at AS createdAt
+             FROM post_replies
+             WHERE id = ?`,
+            [result.insertId]
+        );
+
+        return res.status(201).json({
+            message: "Reply added",
+            reply: rows[0]
+        });
+    } catch (error) {
+        console.error("Create reply error:", error.message);
+        return res.status(500).json({ error: "Unable to create reply" });
+    }
+});
+
+
+/* ================= REPOST API ================= */
+
+// Get current user's repost status
+app.get(
+    "/api/posts/:id/repost-status",
+    requireAuth,
+    async (req, res) => {
+        const postId = Number(req.params.id);
+
+        if (!Number.isSafeInteger(postId) || postId <= 0) {
+            return res.status(400).json({ error: "Invalid post ID" });
+        }
+
+        try {
+            const [posts] = await db.execute(
+                "SELECT id FROM posts WHERE id = ?",
+                [postId]
+            );
+
+            if (posts.length === 0) {
+                return res.status(404).json({ error: "Post not found" });
+            }
+
+            const [rows] = await db.execute(
+                `SELECT id FROM post_reposts
+                 WHERE post_id = ? AND username = ?`,
+                [postId, req.authUser.username]
+            );
+
+            return res.json({ reposted: rows.length > 0 });
+        } catch (error) {
+            console.error("Repost status error:", error.message);
+            return res.status(500).json({
+                error: "Unable to retrieve repost status"
+            });
+        }
+    }
+);
+
+// Repost
+app.post(
+    "/api/posts/:id/repost",
+    requireAuth,
+    async (req, res) => {
+        const postId = Number(req.params.id);
+
+        if (!Number.isSafeInteger(postId) || postId <= 0) {
+            return res.status(400).json({ error: "Invalid post ID" });
+        }
+
+        try {
+            const [posts] = await db.execute(
+                "SELECT id FROM posts WHERE id = ?",
+                [postId]
+            );
+
+            if (posts.length === 0) {
+                return res.status(404).json({ error: "Post not found" });
+            }
+
+            await db.execute(
+                `INSERT INTO post_reposts (post_id, username)
+                 VALUES (?, ?)
+                 ON DUPLICATE KEY UPDATE id = id`,
+                [postId, req.authUser.username]
+            );
+
+            return res.json({
+                message: "Post reposted",
+                reposted: true
+            });
+        } catch (error) {
+            console.error("Repost error:", error.message);
+            return res.status(500).json({ error: "Unable to repost" });
+        }
+    }
+);
+
+// Undo repost
+app.delete(
+    "/api/posts/:id/repost",
+    requireAuth,
+    async (req, res) => {
+        const postId = Number(req.params.id);
+
+        if (!Number.isSafeInteger(postId) || postId <= 0) {
+            return res.status(400).json({ error: "Invalid post ID" });
+        }
+
+        try {
+            const [posts] = await db.execute(
+                "SELECT id FROM posts WHERE id = ?",
+                [postId]
+            );
+
+            if (posts.length === 0) {
+                return res.status(404).json({ error: "Post not found" });
+            }
+
+            await db.execute(
+                `DELETE FROM post_reposts
+                 WHERE post_id = ? AND username = ?`,
+                [postId, req.authUser.username]
+            );
+
+            return res.json({
+                message: "Repost removed",
+                reposted: false
+            });
+        } catch (error) {
+            console.error("Undo repost error:", error.message);
+            return res.status(500).json({
+                error: "Unable to undo repost"
+            });
+        }
+    }
+);
+
 // Start the server
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

@@ -84,6 +84,11 @@ public class TweetAdapter extends RecyclerView.Adapter<TweetViewHolder> {
                 repostClickListener.onRepostClick(tweet);
             }
         });
+        holder.setOnReplyClickListener(v -> {
+            if (tweetClickListener != null) {
+                tweetClickListener.onTweetClick(tweet);
+            }
+        });
     }
 
     @Override

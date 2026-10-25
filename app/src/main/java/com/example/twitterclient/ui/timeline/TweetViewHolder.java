@@ -59,4 +59,7 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     public void setOnShareClickListener(View.OnClickListener listener) {
         shareButton.setOnClickListener(listener);
     }
+    public void setOnTweetClickListener(View.OnClickListener listener) {
+        itemView.setOnClickListener(listener);
+    }
 }
