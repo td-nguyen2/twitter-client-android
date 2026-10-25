@@ -1,52 +1,137 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:background="#FFFFFF" android:orientation="vertical">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:paddingStart="14dp" android:paddingEnd="14dp"
-        android:paddingTop="13dp" android:paddingBottom="12dp">
-        <TextView android:layout_width="42dp" android:layout_height="42dp"
-            android:gravity="center" android:text="U" android:textSize="17sp"
-            android:textStyle="bold" android:textColor="#FFFFFF"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#FFFFFF"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="13dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:gravity="center"
+            android:text="U"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
             android:background="@drawable/ui_avatar_circle" />
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:layout_marginStart="10dp" android:orientation="vertical">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:gravity="center_vertical" android:orientation="horizontal">
-                <TextView android:id="@+id/tweet_display_name"
-                    android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:maxLines="1" android:ellipsize="end" android:textSize="15sp"
-                    android:textColor="#0F1419" android:textStyle="bold" />
-                <TextView android:id="@+id/tweet_username"
-                    android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:layout_marginStart="5dp"
-                    android:maxLines="1" android:ellipsize="end"
-                    android:textSize="13sp" android:textColor="#536471" />
-                <TextView android:layout_width="26dp" android:layout_height="28dp"
-                    android:gravity="center" android:text="⋯" android:textSize="22sp"
-                    android:textColor="#536471" android:contentDescription="More options (coming soon)" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tweet_display_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:textSize="15sp"
+                    android:textColor="#0F1419"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tweet_username"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="5dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:textSize="13sp"
+                    android:textColor="#536471" />
+
+                <TextView
+                    android:layout_width="26dp"
+                    android:layout_height="28dp"
+                    android:gravity="center"
+                    android:text="⋯"
+                    android:textSize="22sp"
+                    android:textColor="#536471" />
             </LinearLayout>
-            <TextView android:id="@+id/tweet_content" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:layout_marginTop="4dp"
-                android:textSize="15sp" android:lineSpacingExtra="3dp" android:textColor="#0F1419" />
-            <!-- Interaction icons are placeholders; Java bindings stay unchanged -->
-            <LinearLayout android:layout_width="match_parent" android:layout_height="40dp"
-                android:layout_marginTop="10dp" android:orientation="horizontal"
+
+            <TextView
+                android:id="@+id/tweet_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="15sp"
+                android:lineSpacingExtra="3dp"
+                android:textColor="#0F1419" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal"
                 android:gravity="center_vertical">
-                <ImageView android:layout_width="0dp" android:layout_height="19dp"
-                    android:layout_weight="1" android:src="@drawable/ui_icon_reply"
-                    android:contentDescription="Reply (coming soon)" />
-                <ImageView android:layout_width="0dp" android:layout_height="19dp"
-                    android:layout_weight="1" android:src="@drawable/ui_icon_repost"
-                    android:contentDescription="Repost (coming soon)" />
-                <ImageView android:layout_width="0dp" android:layout_height="19dp"
-                    android:layout_weight="1" android:src="@drawable/ui_icon_heart"
-                    android:contentDescription="Like (coming soon)" />
-                <ImageView android:layout_width="0dp" android:layout_height="19dp"
-                    android:layout_weight="1" android:src="@drawable/ui_icon_share"
-                    android:contentDescription="Share (coming soon)" />
+
+                <ImageView
+                    android:id="@+id/tweet_reply_button"
+                    android:layout_width="0dp"
+                    android:layout_height="19dp"
+                    android:layout_weight="1"
+                    android:src="@drawable/ui_icon_reply"
+                    android:contentDescription="Reply"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="1dp" />
+
+                <ImageView
+                    android:id="@+id/tweet_repost_button"
+                    android:layout_width="0dp"
+                    android:layout_height="19dp"
+                    android:layout_weight="1"
+                    android:src="@drawable/ui_icon_repost"
+                    android:contentDescription="Repost"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="1dp" />
+
+                <ImageView
+                    android:id="@+id/tweet_like_button"
+                    android:layout_width="0dp"
+                    android:layout_height="19dp"
+                    android:layout_weight="1"
+                    android:src="@drawable/ui_icon_heart"
+                    android:contentDescription="Like"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="1dp" />
+
+                <ImageView
+                    android:id="@+id/tweet_share_button"
+                    android:layout_width="0dp"
+                    android:layout_height="19dp"
+                    android:layout_weight="1"
+                    android:src="@drawable/ui_icon_share"
+                    android:contentDescription="Share"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="1dp" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EFF3F4" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#EFF3F4" />
 </LinearLayout>
