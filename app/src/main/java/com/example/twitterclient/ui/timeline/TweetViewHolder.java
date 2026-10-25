@@ -1,7 +1,10 @@
 package com.example.twitterclient.ui.timeline;
 
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -17,8 +20,10 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     private final TextView content;
     private final ImageView replyButton;
     private final ImageView repostButton;
-    private final ImageView likeButton;
     private final ImageView shareButton;
+    private final LinearLayout btnLikeContainer;
+    private final ImageView ivLikeIcon;
+    private final TextView tvLikeCount;
 
     public TweetViewHolder(@NonNull View itemView) {
         super(itemView);
@@ -29,14 +34,39 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
 
         replyButton = itemView.findViewById(R.id.tweet_reply_button);
         repostButton = itemView.findViewById(R.id.tweet_repost_button);
-        likeButton = itemView.findViewById(R.id.tweet_like_button);
         shareButton = itemView.findViewById(R.id.tweet_share_button);
+
+        btnLikeContainer = itemView.findViewById(R.id.btn_like_container);
+        ivLikeIcon = itemView.findViewById(R.id.iv_like_icon);
+        tvLikeCount = itemView.findViewById(R.id.tv_like_count);
     }
 
     public void bind(Tweet tweet) {
+        bind(tweet, null);
+    }
+
+    public void bind(Tweet tweet, OnLikeClickListener likeClickListener) {
         displayName.setText(tweet.getDisplayName());
         username.setText("@" + tweet.getUsername());
         content.setText(tweet.getText());
+
+        tvLikeCount.setText(String.valueOf(tweet.getLikeCount()));
+        updateLikeUI(tweet.isLikedByMe());
+
+        if (btnLikeContainer != null) {
+            btnLikeContainer.setOnClickListener(v -> {
+                if (likeClickListener != null) {
+                    likeClickListener.onLikeClick(tweet);
+                }
+            });
+        }
+    }
+
+    public void updateLikeUI(boolean likedByMe) {
+        int color = Color.parseColor(likedByMe ? "#F91880" : "#536471");
+        ivLikeIcon.setImageResource(R.drawable.ui_icon_heart);
+        ivLikeIcon.setImageTintList(ColorStateList.valueOf(color));
+        tvLikeCount.setTextColor(color);
     }
 
     public void setOnAuthorClickListener(View.OnClickListener listener) {
@@ -53,13 +83,18 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     }
 
     public void setOnLikeClickListener(View.OnClickListener listener) {
-        likeButton.setOnClickListener(listener);
+        btnLikeContainer.setOnClickListener(listener);
     }
 
     public void setOnShareClickListener(View.OnClickListener listener) {
         shareButton.setOnClickListener(listener);
     }
+
     public void setOnTweetClickListener(View.OnClickListener listener) {
         itemView.setOnClickListener(listener);
+    }
+
+    public interface OnLikeClickListener {
+        void onLikeClick(Tweet tweet);
     }
 }

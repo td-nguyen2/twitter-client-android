@@ -1,4 +1,3 @@
-
 package com.example.twitterclient.repository;
 
 import android.content.Context;
@@ -160,5 +159,56 @@ public class ProfileRepository {
         queue.add(request);
     }
 
+    // Lấy trạng thái follow và số lượng follower/following của một user
+    public void getFollowStatus(
+            int userId,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure
+    ) {
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.GET,
+                BASE_URL + "/api/users/" + userId + "/follow-status",
+                null,
+                success,
+                failure
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                String token = session.getToken();
+                if (token != null && !token.isEmpty()) {
+                    headers.put("Authorization", "Bearer " + token);
+                }
+                return headers;
+            }
+        };
+        queue.add(request);
+    }
+
+    // Bấm Follow hoặc Unfollow một user
+    public void toggleFollow(
+            int userId,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure
+    ) {
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.POST,
+                BASE_URL + "/api/users/" + userId + "/follow",
+                null,
+                success,
+                failure
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                String token = session.getToken();
+                if (token != null && !token.isEmpty()) {
+                    headers.put("Authorization", "Bearer " + token);
+                }
+                return headers;
+            }
+        };
+        queue.add(request);
+    }
 
 }

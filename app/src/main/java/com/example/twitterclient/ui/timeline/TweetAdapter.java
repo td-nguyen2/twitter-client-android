@@ -1,15 +1,16 @@
-
 package com.example.twitterclient.ui.timeline;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.twitterclient.R;
 import com.example.twitterclient.model.Tweet;
+import com.example.twitterclient.repository.TweetRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,13 +60,32 @@ public class TweetAdapter extends RecyclerView.Adapter<TweetViewHolder> {
     }
 
     @Override
-    public void onBindViewHolder(
-            @NonNull TweetViewHolder holder,
-            int position
-    ) {
+    public void onBindViewHolder(@NonNull TweetViewHolder holder, int position) {
         Tweet tweet = tweets.get(position);
 
-        holder.bind(tweet);
+        // Bind the tweet and handle the Like click
+        holder.bind(tweet, clickedTweet -> {
+            TweetRepository repo = new TweetRepository(holder.itemView.getContext());
+
+            repo.toggleLike(clickedTweet.getId(), response -> {
+                boolean liked = response.optBoolean("liked", false);
+                int count = response.optInt("likeCount", clickedTweet.getLikeCount());
+
+                clickedTweet.setLikedByMe(liked);
+                clickedTweet.setLikeCount(count);
+
+                holder.updateLikeUI(liked);
+
+                int adapterPosition = holder.getBindingAdapterPosition();
+                if (adapterPosition != RecyclerView.NO_POSITION) {
+                    notifyItemChanged(adapterPosition);
+                }
+            }, error -> Toast.makeText(
+                    holder.itemView.getContext(),
+                    "Khong the thich bai viet",
+                    Toast.LENGTH_SHORT
+            ).show());
+        });
 
         holder.setOnAuthorClickListener(v -> {
             if (authorClickListener != null) {
@@ -84,6 +104,7 @@ public class TweetAdapter extends RecyclerView.Adapter<TweetViewHolder> {
                 repostClickListener.onRepostClick(tweet);
             }
         });
+
         holder.setOnReplyClickListener(v -> {
             if (tweetClickListener != null) {
                 tweetClickListener.onTweetClick(tweet);
