@@ -143,14 +143,38 @@
                     android:textColor="#536471"
                     android:textSize="14sp"/>
 
-                <TextView
-                    android:id="@+id/textFollowCounts"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:layout_marginTop="12dp"
-                    android:text="Following and followers coming soon"
-                    android:textColor="#536471"
-                    android:textSize="14sp"/>
+                    android:paddingHorizontal="16dp">
+
+                    <TextView
+                        android:id="@+id/textFollowCounts"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="0 Following · 0 Followers"
+                        android:textColor="#536471"
+                        android:textSize="14sp"/>
+
+                    <Button
+                        android:id="@+id/buttonFollow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:minHeight="36dp"
+                        android:text="Follow"
+                        android:textAllCaps="false"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        android:backgroundTint="#0F1419"
+                        android:textColor="#FFFFFF"/>
+                </LinearLayout>
+
+
             </LinearLayout>
 
             <!-- Profile tabs -->
