@@ -50,9 +50,18 @@
             android:text="U" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="17sp" />
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
             android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
-            <TextView android:layout_width="match_parent" android:layout_height="46dp"
-                android:gravity="center_vertical" android:text="What’s happening?"
-                android:textSize="18sp" android:textColor="#536471" />
+            <EditText
+                android:id="@+id/compose_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="46dp"
+                android:hint="What's happening?"
+                android:inputType="textCapSentences|textMultiLine"
+                android:maxLength="280"
+                android:background="@null"
+                android:textSize="18sp"
+                android:textColor="#0F1419"
+                android:textColorHint="#536471" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:gravity="center_vertical" android:orientation="horizontal">
                 <ImageView android:layout_width="22dp" android:layout_height="22dp"
