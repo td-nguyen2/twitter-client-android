@@ -84,19 +84,28 @@
                     android:contentDescription="Profile avatar"/>
             </FrameLayout>
 
-            <!-- Edit profile button -->
+            <!-- Account actions -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="wrap_content"
                 android:gravity="end|center_vertical"
+                android:orientation="horizontal"
                 android:paddingHorizontal="16dp">
+
+                <Button
+                    android:id="@+id/buttonChangePassword"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Change password"
+                    android:textAllCaps="false" />
 
                 <Button
                     android:id="@+id/buttonEditProfile"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
                     android:text="Edit profile"
-                    android:textAllCaps="false"/>
+                    android:textAllCaps="false" />
             </LinearLayout>
 
             <!-- Profile information -->

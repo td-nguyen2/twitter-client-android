@@ -381,6 +381,63 @@ app.post("/api/auth/register", async (req, res) => {
     }
 });
 
+app.post("/api/auth/change-password", requireAuth, async (req, res) => {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (
+        typeof currentPassword !== "string" ||
+        typeof newPassword !== "string" ||
+        !currentPassword ||
+        newPassword.length < 8 ||
+        Buffer.byteLength(newPassword, "utf8") > 72
+    ) {
+        return res.status(400).json({
+            error: "Enter your current password and a new password of at least 8 characters"
+        });
+    }
+
+    if (currentPassword === newPassword) {
+        return res.status(400).json({
+            error: "New password must be different"
+        });
+    }
+
+    try {
+        const [rows] = await db.execute(
+            "SELECT password_hash FROM users WHERE id = ?",
+            [req.authUser.id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(401).json({ error: "Account not found" });
+        }
+
+        const correct = await bcrypt.compare(
+            currentPassword,
+            rows[0].password_hash
+        );
+
+        if (!correct) {
+            return res.status(401).json({
+                error: "Current password is incorrect"
+            });
+        }
+
+        const newHash = await bcrypt.hash(newPassword, 12);
+
+        await db.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            [newHash, req.authUser.id]
+        );
+
+        return res.json({ message: "Password changed successfully" });
+    } catch (error) {
+        console.error("Change password error:", error.message);
+        return res.status(500).json({
+            error: "Unable to change password"
+        });
+    }
+});
 
 app.post("/api/auth/login", async (req, res) => {
     const { username, password } = req.body || {};
@@ -1067,6 +1124,8 @@ app.delete(
         }
     }
 );
+
+require("./passwordResetRoutes")(app, db);
 
 // Start the server
 app.listen(PORT, () => {

@@ -1,66 +1,122 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp"
+        android:paddingBottom="28dp">
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Create Account"
-            android:textSize="26sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="24dp"/>
+            android:layout_marginTop="28dp"
+            android:gravity="center"
+            android:text="✦"
+            android:textColor="#1D9BF0"
+            android:textSize="32sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="64dp"
+            android:text="Create your account"
+            android:textColor="#0F1419"
+            android:textSize="31sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="30dp"
+            android:text="Join the conversation."
+            android:textColor="#536471"
+            android:textSize="16sp" />
 
         <EditText
             android:id="@+id/regUsername"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
             android:hint="Username"
             android:inputType="text"
-            android:singleLine="true"/>
+            android:singleLine="true"
+            android:textColor="#0F1419"
+            android:textColorHint="#536471"
+            android:textSize="16sp" />
 
         <EditText
             android:id="@+id/regDisplayName"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
             android:hint="Display name"
             android:inputType="textPersonName"
-            android:singleLine="true"/>
+            android:singleLine="true"
+            android:textColor="#0F1419"
+            android:textColorHint="#536471"
+            android:textSize="16sp" />
 
         <EditText
             android:id="@+id/regEmail"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
             android:hint="Email"
             android:inputType="textEmailAddress"
-            android:singleLine="true"/>
+            android:singleLine="true"
+            android:textColor="#0F1419"
+            android:textColorHint="#536471"
+            android:textSize="16sp" />
 
         <EditText
             android:id="@+id/regPassword"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
+            android:layout_marginTop="14dp"
             android:hint="Password (at least 8 characters)"
             android:inputType="textPassword"
-            android:singleLine="true"/>
+            android:singleLine="true"
+            android:textColor="#0F1419"
+            android:textColorHint="#536471"
+            android:textSize="16sp" />
 
         <Button
             android:id="@+id/buttonRegister"
             android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="30dp"
+            android:backgroundTint="#1D9BF0"
+            android:text="Create account"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Register"/>
+            android:layout_marginTop="16dp"
+            android:text="By signing up, you agree to our Terms of Service and Privacy Policy."
+            android:textColor="#536471"
+            android:textSize="12sp" />
 
         <Button
             android:id="@+id/buttonBackLogin"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Back to login"/>
+            android:layout_height="50dp"
+            android:layout_marginTop="32dp"
+            android:backgroundTint="#FFFFFF"
+            android:text="Already have an account?  Log in"
+            android:textAllCaps="false"
+            android:textColor="#1D9BF0"
+            android:textSize="15sp" />
 
     </LinearLayout>
 </ScrollView>
