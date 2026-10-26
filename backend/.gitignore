@@ -15,6 +15,7 @@ local.properties
 # Other generated files
 .DS_Store
 Thumbs.db
+/backend/uploads/
 
 # Nested reference repository
 /twitter-client-android/

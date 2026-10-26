@@ -81,10 +81,50 @@
                 android:textSize="18sp"
                 android:textColor="#0F1419"
                 android:textColorHint="#536471" />
+            <FrameLayout
+                android:id="@+id/compose_preview_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/compose_image_preview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxWidth="300dp"
+                    android:maxHeight="220dp"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="Selected image preview" />
+
+                <TextView
+                    android:id="@+id/compose_remove_image"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginEnd="6dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:text="×"
+                    android:textSize="20sp"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/ui_remove_media_background"
+                    android:contentDescription="Remove image"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+            </FrameLayout>
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:gravity="center_vertical" android:orientation="horizontal">
-                <ImageView android:layout_width="22dp" android:layout_height="22dp"
-                    android:src="@drawable/ui_icon_media" android:contentDescription="Media (coming soon)" />
+                <ImageView
+                    android:id="@+id/compose_media_button"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ui_icon_media"
+                    android:contentDescription="Add image"
+                    android:clickable="true"
+                    android:focusable="true" />
                 <TextView android:layout_width="wrap_content" android:layout_height="36dp"
                     android:layout_marginStart="17dp" android:gravity="center"
                     android:text="GIF" android:textStyle="bold" android:textSize="13sp"

@@ -1,9 +1,61 @@
 require("dotenv").config();
 const bcrypt = require("bcrypt");
 const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 const mysql = require("mysql2/promise");
 const jwt = require("jsonwebtoken");
 const app = express();
+// Directory for uploaded tweet images and GIFs
+const uploadDir = path.join(__dirname, "uploads");
+fs.mkdirSync(uploadDir, { recursive: true });
+// Configure storage for uploaded images and GIFs
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+
+    filename: (req, file, cb) => {
+        const extension = path.extname(file.originalname).toLowerCase();
+        const filename = require("crypto").randomUUID() + extension;
+
+        cb(null, filename);
+    }
+});
+
+// Configure which files can be uploaded
+const upload = multer({
+    storage,
+
+    limits: {
+        fileSize: 10 * 1024 * 1024
+    },
+
+    fileFilter: (req, file, cb) => {
+        console.log("Uploaded filename:", file.originalname);
+        console.log("Uploaded MIME type:", file.mimetype);
+
+        const allowedExtensions = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+            ".gif": "image/gif"
+        };
+
+        const extension = path.extname(file.originalname).toLowerCase();
+        const expectedMime = allowedExtensions[extension];
+
+        if (expectedMime && file.mimetype === expectedMime) {
+            cb(null, true);
+        } else {
+            cb(new Error("Unsupported image format"));
+        }
+    }
+});
+// Serve uploaded images and GIFs
+app.use("/uploads", express.static(uploadDir));
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
@@ -161,7 +213,7 @@ app.get("/api/posts", async (req, res) => {
         const [posts] = await db.execute(
             `SELECT p.id, p.username,
                     COALESCE(u.display_name, p.username) AS displayName,
-                    p.content, p.created_at,
+                    p.content, p.media_url AS mediaUrl, p.created_at,
                     (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
                     ${currentUserId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ${Number(currentUserId)})` : "0"} AS likedByMe
              FROM posts p
@@ -179,52 +231,67 @@ app.get("/api/posts", async (req, res) => {
     }
 });
 
-// Create a new post
-app.post("/api/posts", requireAuth, async (req, res) => {
-    const { content } = req.body || {};
+// Create a new post, optionally with an image or GIF
+app.post(
+    "/api/posts",
+    requireAuth,
+    upload.single("media"),
+    async (req, res) => {
+        const { content } = req.body || {};
 
-    if (
-        typeof content !== "string" ||
-        !content.trim() ||
-        content.length > 280
-    ) {
-        return res.status(400).json({
-            error: "Valid tweet content (max 280 characters) required"
-        });
+        const text = typeof content === "string"
+            ? content.trim()
+            : "";
+
+        const mediaUrl = req.file
+            ? `/uploads/${req.file.filename}`
+            : null;
+
+        // A post needs text, media, or both.
+        if ((!text && !req.file) || text.length > 280) {
+            if (req.file) {
+                fs.unlink(req.file.path, () => {});
+            }
+
+            return res.status(400).json({
+                error: "A tweet must contain text or media (max 280 characters)"
+            });
+        }
+
+        try {
+            const username = req.authUser.username;
+
+            const [result] = await db.execute(
+                `INSERT INTO posts (username, content, media_url)
+                 VALUES (?, ?, ?)`,
+                [username, text, mediaUrl]
+            );
+
+            const [rows] = await db.execute(
+                `SELECT id, username, content,
+                        media_url AS mediaUrl, created_at
+                 FROM posts
+                 WHERE id = ?`,
+                [result.insertId]
+            );
+
+            return res.status(201).json({
+                post: rows[0]
+            });
+
+        } catch (error) {
+            if (req.file) {
+                fs.unlink(req.file.path, () => {});
+            }
+
+            console.error("POST error:", error.message);
+
+            return res.status(500).json({
+                error: "Unable to create post"
+            });
+        }
     }
-
-    try {
-        // Username comes from verified authentication,
-        // never from req.body.username.
-        const username = req.authUser.username;
-
-        const [result] = await db.execute(
-            `INSERT INTO posts (username, content)
-             VALUES (?, ?)`,
-            [username, content.trim()]
-        );
-
-        const [rows] = await db.execute(
-            `SELECT id, username, content, created_at
-             FROM posts
-             WHERE id = ?`,
-            [result.insertId]
-        );
-
-        return res.status(201).json({
-            post: rows[0]
-        });
-
-    } catch (error) {
-        console.error("POST error:", error.message);
-
-        return res.status(500).json({
-            error: "Unable to create post"
-        });
-    }
-});
-
-
+);
 
 // Register a new user
 app.post("/api/auth/register", async (req, res) => {
@@ -538,7 +605,7 @@ app.get("/api/users/:id/posts", async (req, res) => {
         const [posts] = await db.execute(
             `SELECT p.id, p.username,
                     COALESCE(u.display_name, p.username) AS displayName,
-                    p.content, p.created_at,
+                    p.content, p.media_url AS mediaUrl, p.created_at,
                     (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
                     ${currentUserId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ${Number(currentUserId)})` : "0"} AS likedByMe
              FROM posts p
@@ -630,7 +697,7 @@ app.get("/api/posts/following", requireAuth, async (req, res) => {
         const [posts] = await db.execute(
             `SELECT p.id, p.username,
                     COALESCE(u.display_name, p.username) AS displayName,
-                    p.content, p.created_at,
+                    p.content, p.media_url AS mediaUrl, p.created_at,
                     (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
                     EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS likedByMe
              FROM posts p
