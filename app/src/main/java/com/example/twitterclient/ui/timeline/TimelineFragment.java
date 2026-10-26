@@ -94,8 +94,56 @@ public class TimelineFragment extends Fragment {
         );
         recyclerView.setAdapter(adapter);
 
-        view.findViewById(R.id.compose_button)
-                .setOnClickListener(v -> showComposeDialog());
+        EditText composeInput = view.findViewById(R.id.compose_input);
+        View postButton = view.findViewById(R.id.compose_button);
+
+        postButton.setOnClickListener(v -> {
+            String text = composeInput.getText().toString().trim();
+
+            if (text.isEmpty()) {
+                composeInput.setError(getString(R.string.empty_tweet));
+                return;
+            }
+
+            if (text.length() > 280) {
+                composeInput.setError(getString(R.string.tweet_too_long));
+                return;
+            }
+
+            postButton.setEnabled(false);
+
+            repository.createTweet(
+                    text,
+                    new TweetRepository.Callback<Tweet>() {
+                        @Override
+                        public void onSuccess(Tweet tweet) {
+                            if (!isAdded()) {
+                                return;
+                            }
+
+                            postButton.setEnabled(true);
+                            composeInput.setText("");
+
+                            showMessage(getString(R.string.post_saved));
+                            loadTweets();
+
+                            if (recyclerView != null) {
+                                recyclerView.scrollToPosition(0);
+                            }
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            if (!isAdded()) {
+                                return;
+                            }
+
+                            postButton.setEnabled(true);
+                            showMessage(message);
+                        }
+                    }
+            );
+        });
 
         TextView logoutButton = view.findViewById(R.id.buttonLogout);
         logoutButton.setOnClickListener(v -> {
@@ -300,93 +348,6 @@ public class TimelineFragment extends Fragment {
                     }
                 }
         );
-    }
-
-    private void showComposeDialog() {
-        final EditText input = new EditText(requireContext());
-        input.setHint(R.string.compose_hint);
-        input.setMinLines(3);
-        input.setMaxLines(5);
-
-        int padding = (int) (
-                16 * getResources().getDisplayMetrics().density
-        );
-        input.setPadding(padding, padding, padding, padding);
-
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.new_tweet)
-                .setView(input)
-                .setNegativeButton(
-                        R.string.cancel,
-                        (d, which) -> d.dismiss()
-                )
-                .setPositiveButton(R.string.post, null)
-                .create();
-
-        dialog.setOnShowListener(v ->
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                        .setOnClickListener(button -> {
-                            String text = input.getText()
-                                    .toString()
-                                    .trim();
-
-                            if (text.isEmpty()) {
-                                input.setError(
-                                        getString(R.string.empty_tweet)
-                                );
-                                return;
-                            }
-
-                            if (text.length() > 280) {
-                                input.setError(
-                                        getString(R.string.tweet_too_long)
-                                );
-                                return;
-                            }
-
-                            dialog.getButton(
-                                    AlertDialog.BUTTON_POSITIVE
-                            ).setEnabled(false);
-
-                            repository.createTweet(
-                                    text,
-                                    new TweetRepository.Callback<Tweet>() {
-                                        @Override
-                                        public void onSuccess(Tweet tweet) {
-                                            if (!isAdded()) {
-                                                return;
-                                            }
-
-                                            dialog.dismiss();
-                                            showMessage(
-                                                    getString(R.string.post_saved)
-                                            );
-                                            // New posts show up under "For you"
-                                            selectTab(false);
-
-                                            if (recyclerView != null) {
-                                                recyclerView.scrollToPosition(0);
-                                            }
-                                        }
-
-                                        @Override
-                                        public void onError(String message) {
-                                            if (!isAdded()) {
-                                                return;
-                                            }
-
-                                            dialog.getButton(
-                                                    AlertDialog.BUTTON_POSITIVE
-                                            ).setEnabled(true);
-
-                                            showMessage(message);
-                                        }
-                                    }
-                            );
-                        })
-        );
-
-        dialog.show();
     }
 
     private void showMessage(String message) {
