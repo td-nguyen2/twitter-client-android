@@ -1,4 +1,3 @@
-
 package com.example.twitterclient.network;
 
 import android.content.Context;
@@ -40,7 +39,7 @@ public class ApiService {
         return headers;
     }
 
-    // GET all posts
+    // GET all posts (sends the token so the server can return likedByMe)
     public void getPosts(
             Response.Listener<JSONObject> success,
             Response.ErrorListener failure) {
@@ -51,7 +50,54 @@ public class ApiService {
                 null,
                 success,
                 failure
-        );
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                return getAuthHeaders();
+            }
+        };
+
+        queue.add(request);
+    }
+
+    // GET posts written by the people the current user follows
+    public void getFollowingPosts(
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure) {
+
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.GET,
+                BASE_URL + "/api/posts/following",
+                null,
+                success,
+                failure
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                return getAuthHeaders();
+            }
+        };
+
+        queue.add(request);
+    }
+
+    // GET notifications of the logged-in user
+    public void getNotifications(
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure) {
+
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.GET,
+                BASE_URL + "/api/notifications",
+                null,
+                success,
+                failure
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                return getAuthHeaders();
+            }
+        };
 
         queue.add(request);
     }
