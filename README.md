@@ -11,13 +11,15 @@ A Twitter-like mobile application built as a USTH group project. The Android cli
 - Android login and registration screens using Fragments.
 - Local session persistence using `SharedPreferences`.
 - Timeline populated from MySQL via `GET /api/posts`, newest first.
-- Compose and publish tweets (up to 280 characters) through Volley.
+- Compose and publish text-only, image-only, and image/GIF tweets (maximum 280 characters of text).
+- Store uploaded files locally in backend/uploads/ using Multer.
+- Display uploaded images and animated GIFs in the timeline using Glide.
 - Authenticated tweet creation: Express verifies a Bearer JWT and obtains the author's username from the authenticated account, **not** from a client-supplied username.
 - Posts remain in MySQL after the app or server restarts.
 
 **Verified during development:** creating `student2`, logging in, and publishing posts attributed to `student2`; older test posts retain their original usernames. Invalid login credentials return HTTP 401.
 
-**Not implemented yet:** an in-app logout button, expired-token recovery, production-ready credential storage, user profiles, follow relationships, likes/replies/retweets, search, media, notifications, and production deployment.
+**Not implemented yet:** an in-app logout button, expired-token recovery, production-ready credential storage, user profiles, follow relationships, likes/replies/retweets, search, notifications, and production deployment.
 
 ## Tech stack
 
@@ -25,7 +27,10 @@ A Twitter-like mobile application built as a USTH group project. The Android cli
 |---|---|
 | Android | Java, XML, AndroidX Fragments, RecyclerView |
 | HTTP client | Volley |
+| Image and GIF loading | Glide 4.16.0 |
 | Backend | Node.js, Express (CommonJS) |
+| File uploading | Multer (`multipart/form-data`) |
+| Media storage | Local `backend/uploads/` directory |
 | Database | MySQL 8.x, `mysql2/promise` |
 | Authentication | `bcrypt`, `jsonwebtoken` (JWT) |
 | Configuration | `dotenv` (`backend/.env`, not committed) |
@@ -99,10 +104,19 @@ CREATE TABLE IF NOT EXISTS posts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL,
     content TEXT NOT NULL,
+    media_url VARCHAR(500) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-```
 
+```
+### Database migration for existing installations
+
+If the posts table already exists, add the media_url column:
+
+```sql
+ALTER TABLE posts
+ADD COLUMN media_url VARCHAR(500) NULL;
+```
 The current `posts` schema still stores an author username. A future migration should introduce `posts.user_id` referencing `users.id` and preserve existing test posts.
 
 ### 2. Configure and start the backend
