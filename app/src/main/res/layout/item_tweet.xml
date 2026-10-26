@@ -14,15 +14,18 @@
         android:paddingTop="13dp"
         android:paddingBottom="12dp">
 
-        <TextView
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:gravity="center"
-            android:text="U"
-            android:textSize="17sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:background="@drawable/ui_avatar_circle" />
+        <FrameLayout
+            android:layout_width="42dp" android:layout_height="42dp">
+            <TextView android:id="@+id/tweet_avatar_fallback"
+                android:layout_width="match_parent" android:layout_height="match_parent"
+                android:gravity="center" android:text="U" android:textSize="17sp"
+                android:textStyle="bold" android:textColor="#FFFFFF"
+                android:background="@drawable/ui_avatar_circle" />
+            <ImageView android:id="@+id/tweet_avatar_image"
+                android:layout_width="match_parent" android:layout_height="match_parent"
+                android:visibility="invisible" android:scaleType="centerCrop"
+                android:contentDescription="Author profile picture" />
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"
@@ -75,17 +78,6 @@
                 android:textSize="15sp"
                 android:lineSpacingExtra="3dp"
                 android:textColor="#0F1419" />
-
-            <ImageView
-                android:id="@+id/tweet_media"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:maxHeight="400dp"
-                android:adjustViewBounds="true"
-                android:scaleType="fitStart"
-                android:contentDescription="Tweet image"
-                android:visibility="gone" />
 
             <LinearLayout
                 android:layout_width="match_parent"

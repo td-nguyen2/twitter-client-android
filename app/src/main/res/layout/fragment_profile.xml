@@ -80,7 +80,8 @@
                     android:layout_height="76dp"
                     android:layout_gravity="bottom|start"
                     android:layout_marginStart="16dp"
-                    android:background="@android:drawable/ic_menu_myplaces"
+                    android:src="@android:drawable/ic_menu_myplaces"
+                    android:scaleType="centerCrop"
                     android:contentDescription="Profile avatar"/>
             </FrameLayout>
 

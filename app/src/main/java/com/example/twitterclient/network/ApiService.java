@@ -2,11 +2,6 @@ package com.example.twitterclient.network;
 
 import android.content.Context;
 
-import android.net.Uri;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.IOException;
-
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -146,65 +141,6 @@ public class ApiService {
         queue.add(request);
     }
 
-    // Create a post with an image or GIF
-    public void createPostWithMedia(
-            String content,
-            Uri mediaUri,
-            Response.Listener<JSONObject> success,
-            Response.ErrorListener failure
-    ) throws IOException {
-
-        // Determine the selected file's MIME type
-        String mimeType = context.getContentResolver().getType(mediaUri);
-
-        if (mimeType == null) {
-            throw new IOException("Unable to determine media type");
-        }
-
-        if (!mimeType.equals("image/jpeg")
-                && !mimeType.equals("image/png")
-                && !mimeType.equals("image/webp")
-                && !mimeType.equals("image/gif")) {
-            throw new IOException("Unsupported media type");
-        }
-
-        // Read the file from Android's content resolver
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-
-        try (InputStream input =
-                     context.getContentResolver().openInputStream(mediaUri)) {
-
-            if (input == null) {
-                throw new IOException("Cannot open selected media");
-            }
-
-            byte[] buffer = new byte[8192];
-            int count;
-
-            while ((count = input.read(buffer)) != -1) {
-                if (output.size() + count > 10 * 1024 * 1024) {
-                    throw new IOException("Media exceeds 10 MB");
-                }
-
-                output.write(buffer, 0, count);
-            }
-        }
-
-        byte[] mediaBytes = output.toByteArray();
-
-        // Send text + file to Express
-        MultipartRequest request = new MultipartRequest(
-                BASE_URL + "/api/posts",
-                content,
-                mediaBytes,
-                mimeType,
-                getAuthHeaders(),
-                success,
-                failure
-        );
-
-        queue.add(request);
-    }
     // Create a reply
     public void createReply(
             long postId,

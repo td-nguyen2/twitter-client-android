@@ -2,6 +2,12 @@ package com.example.twitterclient.ui.profile;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.net.Uri;
+import android.widget.ImageView;
+import com.bumptech.glide.Glide;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
 import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -34,6 +40,37 @@ import java.util.List;
 import java.util.Locale;
 
 public class ProfileFragment extends Fragment {
+    private static final String SERVER_URL =
+            "http://10.0.2.2:3000";
+
+    private ImageView profileAvatar;
+    private ImageView profileBanner;
+
+    private String selectedImageKind = "avatar";
+
+    private final ActivityResultLauncher<PickVisualMediaRequest> imagePicker =
+            registerForActivityResult(
+                    new ActivityResultContracts.PickVisualMedia(),
+                    uri -> {
+                        if (uri != null) {
+                            uploadSelectedImage(uri, selectedImageKind);
+                        }
+                    }
+            );
+
+    private void pickProfileImage(String kind) {
+        selectedImageKind = kind;
+
+        imagePicker.launch(
+                new PickVisualMediaRequest.Builder()
+                        .setMediaType(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE
+                        )
+                        .build()
+        );
+    }
+
+
     private Button buttonFollow;
     private TextView textFollowCounts;
     private ProfileRepository repository;
@@ -80,6 +117,8 @@ public class ProfileFragment extends Fragment {
         buttonFollow = view.findViewById(R.id.buttonFollow);
         textFollowCounts = view.findViewById(R.id.textFollowCounts);
         repository = new ProfileRepository(requireContext());
+        profileAvatar = view.findViewById(R.id.imageProfileAvatar);
+        profileBanner = view.findViewById(R.id.imageProfileBanner);
 
         // Find the views defined in fragment_profile.xml
         profileTitle = view.findViewById(R.id.textProfileTitle);
@@ -148,6 +187,7 @@ public class ProfileFragment extends Fragment {
                         }
 
                         joinedDate.setText(formatJoinedDate(createdAt));
+                        loadProfileImages(user);
 
                         // Ẩn nút Follow ở trang cá nhân của chính mình
                         if (buttonFollow != null) {
@@ -255,6 +295,14 @@ public class ProfileFragment extends Fragment {
 
         layout.addView(nameInput);
         layout.addView(bioInput);
+        Button changeAvatar = new Button(requireContext());
+        changeAvatar.setText("Change profile picture");
+        changeAvatar.setOnClickListener(v -> pickProfileImage("avatar"));
+        layout.addView(changeAvatar);
+        Button changeBanner = new Button(requireContext());
+        changeBanner.setText("Change banner");
+        changeBanner.setOnClickListener(v -> pickProfileImage("banner"));
+        layout.addView(changeBanner);
 
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle("Edit profile")
@@ -328,6 +376,7 @@ public class ProfileFragment extends Fragment {
                         }
 
                         joinedDate.setText(formatJoinedDate(createdAt));
+                        loadProfileImages(user);
 
                         View editBtn = requireView().findViewById(R.id.buttonEditProfile);
                         if (editBtn != null) {
@@ -396,4 +445,116 @@ public class ProfileFragment extends Fragment {
             buttonFollow.setTextColor(android.graphics.Color.WHITE);
         }
     }
+    private void loadProfileImages(JSONObject user) {
+
+        String avatarPath =
+                user.optString("profileImageUrl", "");
+
+        String bannerPath =
+                user.optString("bannerImageUrl", "");
+
+        // Load the avatar, if the account has one.
+        if (!avatarPath.isEmpty() &&
+                !avatarPath.equals("null")) {
+
+            String fullAvatarUrl = avatarPath.startsWith("http")
+                    ? avatarPath
+                    : SERVER_URL + avatarPath;
+
+            Glide.with(this)
+                    .load(fullAvatarUrl)
+                    .circleCrop()
+                    .into(profileAvatar);
+
+        } else {
+            // No uploaded image: show the existing placeholder.
+            profileAvatar.setImageResource(
+                    android.R.drawable.ic_menu_myplaces
+            );
+        }
+
+        // Load the banner, if the account has one.
+        if (!bannerPath.isEmpty() &&
+                !bannerPath.equals("null")) {
+
+            String fullBannerUrl = bannerPath.startsWith("http")
+                    ? bannerPath
+                    : SERVER_URL + bannerPath;
+
+            Glide.with(this)
+                    .load(fullBannerUrl)
+                    .centerCrop()
+                    .into(profileBanner);
+
+        } else {
+            // Retain the gray placeholder when no banner exists.
+            profileBanner.setImageDrawable(null);
+        }
+    }
+
+
+    private void uploadSelectedImage(Uri imageUri, String kind) {
+
+        if (!isAdded()) return;
+
+        Toast.makeText(
+                requireContext(),
+                "Uploading image...",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        repository.uploadProfileImage(
+                imageUri,
+                kind,
+                response -> {
+                    if (!isAdded()) return;
+
+                    Toast.makeText(
+                            requireContext(),
+                            "Image uploaded successfully",
+                            Toast.LENGTH_SHORT
+                    ).show();
+
+                    // Reload the currently displayed profile.
+                    String selectedUsername = null;
+
+                    if (getArguments() != null) {
+                        selectedUsername =
+                                getArguments().getString(ARG_USERNAME);
+                    }
+
+                    if (selectedUsername == null) {
+                        loadMyProfile();
+                    } else {
+                        loadProfileByUsername(selectedUsername);
+                    }
+                },
+                error -> {
+                    if (!isAdded()) return;
+
+                    int status = error.networkResponse == null
+                            ? 0
+                            : error.networkResponse.statusCode;
+
+                    String message;
+
+                    if (status == 401) {
+                        message = "Session expired. Please log in again.";
+                    } else if (status == 400) {
+                        message = "Invalid image or file too large";
+                    } else if (error.getCause() != null) {
+                        message = error.getCause().getMessage();
+                    } else {
+                        message = "Image upload failed";
+                    }
+
+                    Toast.makeText(
+                            requireContext(),
+                            message,
+                            Toast.LENGTH_LONG
+                    ).show();
+                }
+        );
+    }
+
 }
