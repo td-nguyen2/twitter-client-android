@@ -202,8 +202,11 @@ public class ProfileFragment extends Fragment {
                             JSONObject tweetJson = new JSONObject();
                             tweetJson.put("id", post.optInt("id", 0));
                             tweetJson.put("username", postUsername);
-                            tweetJson.put("displayName", name);
+                            tweetJson.put("displayName", post.optString("displayName", postUsername));
                             tweetJson.put("text", content);
+                            if (!post.isNull("mediaUrl")) {
+                                tweetJson.put("mediaUrl", post.optString("mediaUrl", ""));
+                            }
                             tweetJson.put("likeCount", post.optInt("likeCount", 0));
                             // Server sends 0/1, so pass the raw value through (Tweet reads both forms)
                             tweetJson.put("likedByMe", post.opt("likedByMe"));

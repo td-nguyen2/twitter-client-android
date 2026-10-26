@@ -177,6 +177,15 @@ async function initSocialTables() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS post_reposts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                post_id INT NOT NULL,
+                username VARCHAR(50) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_post_reposts (post_id, username)
+            )
+        `);
         console.log("Social tables (likes, follows, notifications) verified!");
     } catch (err) {
         console.error("Failed to init social tables:", err.message);
@@ -658,18 +667,21 @@ app.get("/api/users/:id/posts", async (req, res) => {
             });
         }
 
-        // Retrieve posts written by this user (with likeCount and likedByMe)
+        // Retrieve posts written by this user plus posts this user reposted
+        const uname = users[0].username;
         const [posts] = await db.execute(
             `SELECT p.id, p.username,
                     COALESCE(u.display_name, p.username) AS displayName,
                     p.content, p.media_url AS mediaUrl, p.created_at,
+                    (p.username <> ?) AS isRepost,
                     (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
                     ${currentUserId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ${Number(currentUserId)})` : "0"} AS likedByMe
              FROM posts p
              LEFT JOIN users u ON u.username = p.username
              WHERE p.username = ?
-             ORDER BY p.created_at DESC, p.id DESC`,
-            [users[0].username]
+                OR p.id IN (SELECT pr.post_id FROM post_reposts pr WHERE pr.username = ?)
+             ORDER BY p.id DESC`,
+            [uname, uname, uname]
         );
 
         return res.json({ posts });
