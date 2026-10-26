@@ -1,6 +1,7 @@
-
 package com.example.twitterclient.ui.timeline;
 
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -26,6 +27,7 @@ import com.example.twitterclient.repository.TweetRepository;
 
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -36,6 +38,15 @@ public class TimelineFragment extends Fragment {
     private RecyclerView recyclerView;
     private TweetRepository repository;
     private ApiService apiService;
+
+    // false = "For you" (all posts), true = "Following" (followed users only)
+    private boolean showingFollowing = false;
+
+    private TextView tabForYouText;
+    private TextView tabFollowingText;
+    private View indicatorForYou;
+    private View indicatorFollowing;
+    private TextView emptyMessage;
 
     private final Set<Long> repostRequestsInProgress = new HashSet<>();
 
@@ -148,25 +159,106 @@ public class TimelineFragment extends Fragment {
                 ((MainActivity) requireActivity()).showProfile()
         );
 
+        tabForYouText = view.findViewById(R.id.tab_for_you_text);
+        tabFollowingText = view.findViewById(R.id.tab_following_text);
+        indicatorForYou = view.findViewById(R.id.indicator_for_you);
+        indicatorFollowing = view.findViewById(R.id.indicator_following);
+        emptyMessage = view.findViewById(R.id.timeline_empty_message);
+
+        view.findViewById(R.id.tab_for_you)
+                .setOnClickListener(v -> selectTab(false));
+        view.findViewById(R.id.tab_following)
+                .setOnClickListener(v -> selectTab(true));
+
+        // Bottom navigation
+        view.findViewById(R.id.nav_home).setOnClickListener(v -> {
+            if (recyclerView != null) {
+                recyclerView.scrollToPosition(0);
+            }
+            loadTweets();
+        });
+        view.findViewById(R.id.nav_notifications).setOnClickListener(v ->
+                ((MainActivity) requireActivity()).showNotifications()
+        );
+        view.findViewById(R.id.nav_profile).setOnClickListener(v ->
+                ((MainActivity) requireActivity()).showProfile()
+        );
+
+        updateTabStyles();
         loadTweets();
     }
 
+    private void selectTab(boolean following) {
+        showingFollowing = following;
+        updateTabStyles();
+
+        // Clear the old list so posts from the other tab never flash up
+        adapter.replaceTweets(new ArrayList<Tweet>());
+        updateEmptyMessage(false);
+
+        loadTweets();
+    }
+
+    private void updateTabStyles() {
+        if (tabForYouText == null || tabFollowingText == null) {
+            return;
+        }
+
+        styleTab(tabForYouText, indicatorForYou, !showingFollowing);
+        styleTab(tabFollowingText, indicatorFollowing, showingFollowing);
+    }
+
+    private void styleTab(TextView label, View indicator, boolean selected) {
+        label.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
+        label.setTextColor(Color.parseColor(selected ? "#0F1419" : "#536471"));
+        indicator.setVisibility(selected ? View.VISIBLE : View.INVISIBLE);
+    }
+
+    private void updateEmptyMessage(boolean empty) {
+        if (emptyMessage == null) {
+            return;
+        }
+
+        emptyMessage.setText(
+                showingFollowing
+                        ? "No posts yet. Follow people from their profile to see their posts here."
+                        : "No posts yet."
+        );
+        emptyMessage.setVisibility(empty ? View.VISIBLE : View.GONE);
+    }
+
+    // Loads the tab that is currently selected
     private void loadTweets() {
-        repository.getTweets(new TweetRepository.Callback<List<Tweet>>() {
-            @Override
-            public void onSuccess(List<Tweet> tweets) {
-                if (!isAdded() || recyclerView == null) {
-                    return;
-                }
+        final boolean following = showingFollowing;
 
-                adapter.replaceTweets(tweets);
-            }
+        TweetRepository.Callback<List<Tweet>> callback =
+                new TweetRepository.Callback<List<Tweet>>() {
+                    @Override
+                    public void onSuccess(List<Tweet> tweets) {
+                        // Ignore answers for a tab the user has already left
+                        if (!isAdded()
+                                || recyclerView == null
+                                || following != showingFollowing) {
+                            return;
+                        }
 
-            @Override
-            public void onError(String message) {
-                showMessage(message);
-            }
-        });
+                        adapter.replaceTweets(tweets);
+                        updateEmptyMessage(tweets.isEmpty());
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        if (following == showingFollowing) {
+                            showMessage(message);
+                        }
+                    }
+                };
+
+        if (following) {
+            repository.getFollowingTweets(callback);
+        } else {
+            repository.getTweets(callback);
+        }
     }
 
     private void toggleRepost(Tweet tweet) {
@@ -271,6 +363,11 @@ public class TimelineFragment extends Fragment {
     @Override
     public void onDestroyView() {
         recyclerView = null;
+        tabForYouText = null;
+        tabFollowingText = null;
+        indicatorForYou = null;
+        indicatorFollowing = null;
+        emptyMessage = null;
         super.onDestroyView();
     }
 }

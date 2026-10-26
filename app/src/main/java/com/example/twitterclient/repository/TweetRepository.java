@@ -34,22 +34,31 @@ public class TweetRepository {
     }
 
     public void getTweets(Callback<List<Tweet>> callback) {
-        api.getPosts(response -> {
-            try {
-                JSONArray posts = response.getJSONArray("posts");
-                List<Tweet> result = new ArrayList<>();
+        api.getPosts(response -> parseTweets(response, callback),
+                error -> callback.onError(describe(error)));
+    }
 
-                for (int i = 0; i < posts.length(); i++) {
-                    result.add(toTweet(posts.getJSONObject(i)));
-                }
+    // Posts written by the people the current user follows
+    public void getFollowingTweets(Callback<List<Tweet>> callback) {
+        api.getFollowingPosts(response -> parseTweets(response, callback),
+                error -> callback.onError(describe(error)));
+    }
 
-                callback.onSuccess(result);
-            } catch (JSONException error) {
-                callback.onError(
-                        "Invalid server response: " + error.getMessage()
-                );
+    private void parseTweets(JSONObject response, Callback<List<Tweet>> callback) {
+        try {
+            JSONArray posts = response.getJSONArray("posts");
+            List<Tweet> result = new ArrayList<>();
+
+            for (int i = 0; i < posts.length(); i++) {
+                result.add(toTweet(posts.getJSONObject(i)));
             }
-        }, error -> callback.onError(describe(error)));
+
+            callback.onSuccess(result);
+        } catch (JSONException error) {
+            callback.onError(
+                    "Invalid server response: " + error.getMessage()
+            );
+        }
     }
 
     public void createTweet(
@@ -113,18 +122,7 @@ public class TweetRepository {
     }
 
     private static Tweet toTweet(JSONObject item) throws JSONException {
-        long id = item.getLong("id");
-        String username = item.getString("username");
-        String content = item.getString("content");
-
-        Tweet tweet = new Tweet(id, username, username, content);
-        tweet.setLikeCount(
-                item.optInt("likeCount", item.optInt("like_count", 0))
-        );
-        tweet.setLikedByMe(
-                item.optBoolean("likedByMe", item.optBoolean("liked_by_me", false))
-        );
-        return tweet;
+        return new Tweet(item);
     }
 
     private static String describe(VolleyError error) {

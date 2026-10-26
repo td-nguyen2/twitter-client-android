@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 const bcrypt = require("bcrypt");
 const express = require("express");
@@ -85,6 +84,53 @@ async function requireAuth(req, res, next) {
     }
 }
 
+// Helper: Lấy userId nếu người dùng có gửi kèm JWT token
+async function getOptionalUserId(req) {
+    const auth = req.headers.authorization;
+    if (typeof auth !== "string" || !auth.startsWith("Bearer ")) return null;
+    try {
+        const payload = jwt.verify(auth.slice(7).trim(), process.env.JWT_SECRET, { algorithms: ["HS256"] });
+        return Number.isSafeInteger(payload?.userId) ? payload.userId : null;
+    } catch {
+        return null;
+    }
+}
+
+// Tự động khởi tạo 3 bảng post_likes, follows, notifications nếu chưa tồn tại trong MySQL
+async function initSocialTables() {
+    try {
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS post_likes (
+                user_id INT NOT NULL,
+                post_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, post_id)
+            )
+        `);
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS follows (
+                follower_id INT NOT NULL,
+                following_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (follower_id, following_id)
+            )
+        `);
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                recipient_id INT NOT NULL,
+                actor_id INT NOT NULL,
+                type VARCHAR(20) NOT NULL,
+                post_id INT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log("Social tables (likes, follows, notifications) verified!");
+    } catch (err) {
+        console.error("Failed to init social tables:", err.message);
+    }
+}
+initSocialTables();
 
 
 // Check server and database
@@ -107,13 +153,20 @@ app.get("/api/health", async (req, res) => {
     }
 });
 
-// Get all posts, newest first
+// Get all posts, newest first (with likeCount, likedByMe, displayName)
 app.get("/api/posts", async (req, res) => {
     try {
-        const [posts] = await db.query(
-            `SELECT id, username, content, created_at
-             FROM posts
-             ORDER BY id DESC`
+        const currentUserId = await getOptionalUserId(req);
+
+        const [posts] = await db.execute(
+            `SELECT p.id, p.username,
+                    COALESCE(u.display_name, p.username) AS displayName,
+                    p.content, p.created_at,
+                    (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
+                    ${currentUserId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ${Number(currentUserId)})` : "0"} AS likedByMe
+             FROM posts p
+             LEFT JOIN users u ON u.username = p.username
+             ORDER BY p.id DESC`
         );
 
         res.json({ posts });
@@ -127,7 +180,6 @@ app.get("/api/posts", async (req, res) => {
 });
 
 // Create a new post
-
 app.post("/api/posts", requireAuth, async (req, res) => {
     const { content } = req.body || {};
 
@@ -261,7 +313,6 @@ app.post("/api/auth/register", async (req, res) => {
         });
     }
 });
-
 
 
 app.post("/api/auth/login", async (req, res) => {
@@ -459,7 +510,6 @@ app.get("/api/users/by-username/:username", async (req, res) => {
 });
 
 
-
 app.get("/api/users/:id/posts", async (req, res) => {
     const userId = Number(req.params.id);
 
@@ -470,9 +520,11 @@ app.get("/api/users/:id/posts", async (req, res) => {
     }
 
     try {
+        const currentUserId = await getOptionalUserId(req);
+
         // Find the username associated with the user ID
         const [users] = await db.execute(
-            "SELECT username FROM users WHERE id = ?",
+            "SELECT username, display_name FROM users WHERE id = ?",
             [userId]
         );
 
@@ -482,12 +534,17 @@ app.get("/api/users/:id/posts", async (req, res) => {
             });
         }
 
-        // Retrieve posts written by this user
+        // Retrieve posts written by this user (with likeCount and likedByMe)
         const [posts] = await db.execute(
-            `SELECT id, username, content, created_at
-             FROM posts
-             WHERE username = ?
-             ORDER BY created_at DESC, id DESC`,
+            `SELECT p.id, p.username,
+                    COALESCE(u.display_name, p.username) AS displayName,
+                    p.content, p.created_at,
+                    (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
+                    ${currentUserId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ${Number(currentUserId)})` : "0"} AS likedByMe
+             FROM posts p
+             LEFT JOIN users u ON u.username = p.username
+             WHERE p.username = ?
+             ORDER BY p.created_at DESC, p.id DESC`,
             [users[0].username]
         );
 
@@ -562,6 +619,179 @@ app.patch("/api/users/me", requireAuth, async (req, res) => {
     }
 });
 
+// ==========================================
+// SOCIAL FEATURES: LIKES, FOLLOWS, FEED, NOTIFICATIONS
+// ==========================================
+
+// 1. Get Following-only Feed
+app.get("/api/posts/following", requireAuth, async (req, res) => {
+    try {
+        const uid = req.authUser.id;
+        const [posts] = await db.execute(
+            `SELECT p.id, p.username,
+                    COALESCE(u.display_name, p.username) AS displayName,
+                    p.content, p.created_at,
+                    (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
+                    EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS likedByMe
+             FROM posts p
+             JOIN users u ON u.username = p.username
+             JOIN follows f ON f.following_id = u.id
+             WHERE f.follower_id = ?
+             ORDER BY p.id DESC`,
+            [uid, uid]
+        );
+        return res.json({ posts });
+    } catch (error) {
+        console.error("GET following posts error:", error.message);
+        return res.status(500).json({ error: "Unable to retrieve following feed" });
+    }
+});
+
+// 2. Toggle Like / Unlike a post
+app.post("/api/posts/:id/like", requireAuth, async (req, res) => {
+    const postId = Number(req.params.id);
+    const userId = req.authUser.id;
+
+    if (!Number.isSafeInteger(postId) || postId <= 0) {
+        return res.status(400).json({ error: "Invalid post ID" });
+    }
+
+    try {
+        const [posts] = await db.execute("SELECT id, username, content FROM posts WHERE id = ?", [postId]);
+        if (posts.length === 0) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const [existing] = await db.execute(
+            "SELECT 1 FROM post_likes WHERE user_id = ? AND post_id = ?",
+            [userId, postId]
+        );
+
+        let likedByMe = false;
+        if (existing.length > 0) {
+            await db.execute("DELETE FROM post_likes WHERE user_id = ? AND post_id = ?", [userId, postId]);
+            likedByMe = false;
+        } else {
+            await db.execute("INSERT INTO post_likes (user_id, post_id) VALUES (?, ?)", [userId, postId]);
+            likedByMe = true;
+
+            const [authors] = await db.execute("SELECT id FROM users WHERE username = ?", [posts[0].username]);
+            if (authors.length > 0 && authors[0].id !== userId) {
+                await db.execute(
+                    "INSERT INTO notifications (recipient_id, actor_id, type, post_id) VALUES (?, ?, 'LIKE', ?)",
+                    [authors[0].id, userId, postId]
+                );
+            }
+        }
+
+        const [countRows] = await db.execute("SELECT COUNT(*) AS count FROM post_likes WHERE post_id = ?", [postId]);
+        return res.json({
+            postId,
+            likedByMe,
+            likeCount: countRows[0].count
+        });
+    } catch (error) {
+        console.error("Toggle like error:", error.message);
+        return res.status(500).json({ error: "Unable to toggle like" });
+    }
+});
+
+// 3. Get Follow status & counts for a user
+app.get("/api/users/:id/follow-status", async (req, res) => {
+    const targetId = Number(req.params.id);
+    if (!Number.isSafeInteger(targetId) || targetId <= 0) {
+        return res.status(400).json({ error: "Invalid user ID" });
+    }
+
+    try {
+        const currentUserId = await getOptionalUserId(req);
+        const [[followers]] = await db.execute("SELECT COUNT(*) AS count FROM follows WHERE following_id = ?", [targetId]);
+        const [[following]] = await db.execute("SELECT COUNT(*) AS count FROM follows WHERE follower_id = ?", [targetId]);
+
+        let isFollowing = false;
+        if (currentUserId && currentUserId !== targetId) {
+            const [rows] = await db.execute(
+                "SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?",
+                [currentUserId, targetId]
+            );
+            isFollowing = rows.length > 0;
+        }
+
+        return res.json({
+            followersCount: followers.count,
+            followingCount: following.count,
+            isFollowing
+        });
+    } catch (error) {
+        console.error("Follow status error:", error.message);
+        return res.status(500).json({ error: "Unable to get follow status" });
+    }
+});
+
+// 4. Toggle Follow / Unfollow a user
+app.post("/api/users/:id/follow", requireAuth, async (req, res) => {
+    const targetId = Number(req.params.id);
+    const followerId = req.authUser.id;
+
+    if (!Number.isSafeInteger(targetId) || targetId <= 0 || targetId === followerId) {
+        return res.status(400).json({ error: "Invalid user ID to follow" });
+    }
+
+    try {
+        const [existing] = await db.execute(
+            "SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?",
+            [followerId, targetId]
+        );
+
+        let isFollowing = false;
+        if (existing.length > 0) {
+            await db.execute("DELETE FROM follows WHERE follower_id = ? AND following_id = ?", [followerId, targetId]);
+            isFollowing = false;
+        } else {
+            await db.execute("INSERT INTO follows (follower_id, following_id) VALUES (?, ?)", [followerId, targetId]);
+            isFollowing = true;
+
+            await db.execute(
+                "INSERT INTO notifications (recipient_id, actor_id, type, post_id) VALUES (?, ?, 'FOLLOW', NULL)",
+                [targetId, followerId]
+            );
+        }
+
+        const [[followers]] = await db.execute("SELECT COUNT(*) AS count FROM follows WHERE following_id = ?", [targetId]);
+        const [[following]] = await db.execute("SELECT COUNT(*) AS count FROM follows WHERE follower_id = ?", [targetId]);
+
+        return res.json({
+            isFollowing,
+            followersCount: followers.count,
+            followingCount: following.count
+        });
+    } catch (error) {
+        console.error("Toggle follow error:", error.message);
+        return res.status(500).json({ error: "Unable to toggle follow" });
+    }
+});
+
+// 5. Get Notifications for logged-in user
+app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+        const [notifications] = await db.execute(
+            `SELECT n.id, n.type, n.post_id AS postId, n.created_at AS createdAt,
+                    u.username AS actorUsername, u.display_name AS actorDisplayName,
+                    p.content AS postSnippet
+             FROM notifications n
+             JOIN users u ON u.id = n.actor_id
+             LEFT JOIN posts p ON p.id = n.post_id
+             WHERE n.recipient_id = ?
+             ORDER BY n.id DESC
+             LIMIT 50`,
+            [req.authUser.id]
+        );
+        return res.json({ notifications });
+    } catch (error) {
+        console.error("GET notifications error:", error.message);
+        return res.status(500).json({ error: "Unable to load notifications" });
+    }
+});
 
 /* ================= REPLY API ================= */
 

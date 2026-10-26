@@ -68,7 +68,8 @@ public class TweetAdapter extends RecyclerView.Adapter<TweetViewHolder> {
             TweetRepository repo = new TweetRepository(holder.itemView.getContext());
 
             repo.toggleLike(clickedTweet.getId(), response -> {
-                boolean liked = response.optBoolean("liked", false);
+                // The server answers with likedByMe and likeCount
+                boolean liked = response.optBoolean("likedByMe", false);
                 int count = response.optInt("likeCount", clickedTweet.getLikeCount());
 
                 clickedTweet.setLikedByMe(liked);

@@ -1,8 +1,8 @@
-
 package com.example.twitterclient;
 
 import android.os.Bundle;
 import android.view.Gravity;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 
@@ -13,11 +13,15 @@ import com.example.twitterclient.auth.SessionManager;
 import com.example.twitterclient.model.Tweet;
 import com.example.twitterclient.ui.auth.LoginFragment;
 import com.example.twitterclient.ui.auth.RegisterFragment;
+import com.example.twitterclient.ui.notifications.NotificationsFragment;
 import com.example.twitterclient.ui.profile.ProfileFragment;
 import com.example.twitterclient.ui.timeline.PostDetailFragment;
 import com.example.twitterclient.ui.timeline.TimelineFragment;
 
 public class MainActivity extends AppCompatActivity {
+
+    // Temporary test button (login screen only)
+    private Button testButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
                 showLogin();
 
                 // TEMPORARY TEST: Open Post View without logging in
-                Button testButton = new Button(this);
+                testButton = new Button(this);
                 testButton.setText("Test Post View");
 
                 FrameLayout container =
@@ -82,7 +86,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void showTimeline() {
+        // The temporary test button must not sit on top of the bottom bar
+        removeTestButton();
         openFragment(new TimelineFragment());
+    }
+
+    // Open the notifications screen (back button returns to the timeline)
+    public void showNotifications() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, new NotificationsFragment())
+                .addToBackStack(null)
+                .commit();
+    }
+
+    private void removeTestButton() {
+        if (testButton != null && testButton.getParent() instanceof ViewGroup) {
+            ((ViewGroup) testButton.getParent()).removeView(testButton);
+        }
+        testButton = null;
     }
 
     // Open Post Detail screen
