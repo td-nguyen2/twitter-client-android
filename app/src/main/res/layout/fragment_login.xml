@@ -1,52 +1,164 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#FFFFFF"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp">
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="USTH Twitter"
-            android:textSize="28sp"
-            android:textStyle="bold"
+            android:layout_marginTop="28dp"
             android:gravity="center"
-            android:layout_marginBottom="32dp"/>
+            android:text="✦"
+            android:textColor="#1D9BF0"
+            android:textSize="34sp" />
 
-        <EditText
-            android:id="@+id/inputUsername"
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Username"
-            android:inputType="text"
-            android:singleLine="true"/>
+            android:layout_marginTop="100dp"
+            android:text="See what's happening in the world right now."
+            android:textColor="#0F1419"
+            android:textSize="32sp"
+            android:textStyle="bold" />
 
-        <EditText
-            android:id="@+id/inputPassword"
+        <View
+            android:layout_width="1dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Màn hình chào -->
+        <LinearLayout
+            android:id="@+id/welcomePanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Password"
-            android:inputType="textPassword"
-            android:singleLine="true"/>
+            android:orientation="vertical">
 
-        <Button
-            android:id="@+id/buttonLogin"
+            <Button
+                android:id="@+id/buttonGoogle"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:backgroundTint="#F7F9F9"
+                android:text="Continue with Google"
+                android:textAllCaps="false"
+                android:textColor="#0F1419"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:gravity="center"
+                android:text="──────────  or  ──────────"
+                android:textColor="#536471"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/buttonGoRegister"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:backgroundTint="#1D9BF0"
+                android:text="Create account"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="By signing up, you agree to our Terms of Service and Privacy Policy."
+                android:textColor="#536471"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/buttonShowLogin"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="32dp"
+                android:gravity="center_vertical"
+                android:text="Already have an account?  Log in"
+                android:textColor="#1D9BF0"
+                android:textSize="15sp"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
+        <!-- Form hiện ra khi bấm Log in -->
+        <LinearLayout
+            android:id="@+id/loginPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Login"/>
+            android:orientation="vertical"
+            android:visibility="gone">
 
-        <Button
-            android:id="@+id/buttonGoRegister"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Create an account"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:text="Log in to USTH Twitter"
+                android:textColor="#0F1419"
+                android:textSize="24sp"
+                android:textStyle="bold" />
 
+            <EditText
+                android:id="@+id/inputUsername"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:hint="Username"
+                android:inputType="text"
+                android:singleLine="true" />
+
+            <EditText
+                android:id="@+id/inputPassword"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp"
+                android:hint="Password"
+                android:inputType="textPassword"
+                android:singleLine="true" />
+
+            <Button
+                android:id="@+id/buttonLogin"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="22dp"
+                android:backgroundTint="#1D9BF0"
+                android:text="Log in"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/buttonForgotPassword"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="Forgot password?"
+                android:textColor="#1D9BF0"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/buttonBack"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="Back"
+                android:textColor="#536471"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="24dp" />
     </LinearLayout>
 </ScrollView>

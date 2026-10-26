@@ -18,8 +18,12 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.volley.Request;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.example.twitterclient.MainActivity;
 import com.example.twitterclient.R;
+import com.example.twitterclient.auth.SessionManager;
 import com.example.twitterclient.model.Tweet;
 import com.example.twitterclient.repository.ProfileRepository;
 import com.example.twitterclient.ui.timeline.TweetAdapter;
@@ -32,6 +36,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ProfileFragment extends Fragment {
     private Button buttonFollow;
@@ -110,6 +116,9 @@ public class ProfileFragment extends Fragment {
         // Edit profile button
         Button editButton = view.findViewById(R.id.buttonEditProfile);
         editButton.setOnClickListener(v -> showEditProfileDialog());
+
+        Button changePasswordButton = view.findViewById(R.id.buttonChangePassword);
+        changePasswordButton.setOnClickListener(v -> showChangePasswordDialog());
 
         String selectedUsername = null;
         if (getArguments() != null) {
@@ -333,6 +342,10 @@ public class ProfileFragment extends Fragment {
                         if (editBtn != null) {
                             editBtn.setVisibility(View.GONE);
                         }
+                        View changePasswordBtn = requireView().findViewById(R.id.buttonChangePassword);
+                        if (changePasswordBtn != null) {
+                            changePasswordBtn.setVisibility(View.GONE);
+                        }
 
                         loadUserPosts(userId, name, handle);
                         loadFollowData(userId);
@@ -395,5 +408,118 @@ public class ProfileFragment extends Fragment {
             buttonFollow.setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#0F1419")));
             buttonFollow.setTextColor(android.graphics.Color.WHITE);
         }
+    }
+
+    private void showChangePasswordDialog() {
+        LinearLayout layout = new LinearLayout(requireContext());
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(48, 24, 48, 8);
+
+        EditText currentInput = new EditText(requireContext());
+        currentInput.setHint("Current password");
+        currentInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+        EditText newInput = new EditText(requireContext());
+        newInput.setHint("New password");
+        newInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+        EditText confirmInput = new EditText(requireContext());
+        confirmInput.setHint("Confirm new password");
+        confirmInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+        layout.addView(currentInput);
+        layout.addView(newInput);
+        layout.addView(confirmInput);
+
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle("Change password")
+                .setView(layout)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Save", null)
+                .create();
+
+        dialog.setOnShowListener(ignored -> {
+            Button saveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            saveButton.setOnClickListener(v -> {
+                String currentPassword = currentInput.getText().toString();
+                String newPassword = newInput.getText().toString();
+                String confirmPassword = confirmInput.getText().toString();
+
+                if (currentPassword.isEmpty()) {
+                    currentInput.setError("Enter your current password");
+                    return;
+                }
+                if (newPassword.length() < 8) {
+                    newInput.setError("Use at least 8 characters");
+                    return;
+                }
+                if (newPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+                    newInput.setError("Password is too long (maximum 72 bytes)");
+                    return;
+                }
+                if (newPassword.equals(currentPassword)) {
+                    newInput.setError("Choose a different password");
+                    return;
+                }
+                if (!newPassword.equals(confirmPassword)) {
+                    confirmInput.setError("Passwords do not match");
+                    return;
+                }
+
+                String token = new SessionManager(requireContext()).getToken();
+                if (token == null || token.isEmpty()) {
+                    showError("Please log in again");
+                    return;
+                }
+
+                JSONObject body = new JSONObject();
+                try {
+                    body.put("currentPassword", currentPassword);
+                    body.put("newPassword", newPassword);
+                } catch (Exception error) {
+                    showError("Cannot prepare request");
+                    return;
+                }
+
+                saveButton.setEnabled(false);
+                JsonObjectRequest request = new JsonObjectRequest(
+                        Request.Method.POST,
+                        "http://10.0.2.2:3000/api/auth/change-password",
+                        body,
+                        response -> {
+                            if (!isAdded()) return;
+                            dialog.dismiss();
+                            showError("Password changed successfully");
+                        },
+                        error -> {
+                            if (!isAdded()) return;
+                            saveButton.setEnabled(true);
+                            int status = error.networkResponse == null
+                                    ? 0 : error.networkResponse.statusCode;
+                            String message;
+                            if (status == 401) {
+                                message = "Current password is incorrect or session expired";
+                            } else if (status == 400) {
+                                message = "Check the new password";
+                            } else if (status == 0) {
+                                message = "Cannot reach server";
+                            } else {
+                                message = "Cannot change password (HTTP " + status + ")";
+                            }
+                            showError(message);
+                        }
+                ) {
+                    @Override
+                    public Map<String, String> getHeaders() {
+                        Map<String, String> headers = new HashMap<>();
+                        headers.put("Authorization", "Bearer " + token);
+                        return headers;
+                    }
+                };
+
+                Volley.newRequestQueue(requireContext().getApplicationContext()).add(request);
+            });
+        });
+        dialog.show();
     }
 }
