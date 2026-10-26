@@ -1,6 +1,7 @@
 package com.example.twitterclient.repository;
 
 import android.content.Context;
+import android.net.Uri;
 import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.Response;
@@ -13,6 +14,7 @@ import com.example.twitterclient.network.ApiService;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -88,6 +90,47 @@ public class TweetRepository {
 
         } catch (JSONException error) {
             callback.onError("Could not create request");
+        }
+    }
+
+    public void createTweetWithMedia(
+            String content,
+            Uri mediaUri,
+            Callback<Tweet> callback
+    ) {
+        try {
+            api.createPostWithMedia(
+                    content,
+                    mediaUri,
+                    response -> {
+                        try {
+                            JSONObject postJson = response.getJSONObject("post");
+                            Tweet tweet = toTweet(postJson);
+                            callback.onSuccess(tweet);
+                        } catch (JSONException e) {
+                            callback.onError("Invalid server response");
+                        }
+                    },
+                    error -> {
+                        if (error.networkResponse != null
+                                && error.networkResponse.data != null) {
+
+                            String responseBody = new String(
+                                    error.networkResponse.data,
+                                    java.nio.charset.StandardCharsets.UTF_8
+                            );
+
+                            callback.onError(
+                                    "HTTP " + error.networkResponse.statusCode
+                                            + ": " + responseBody
+                            );
+                        } else {
+                            callback.onError(describe(error));
+                        }
+                    }
+            );
+        } catch (IOException e) {
+            callback.onError(e.getMessage());
         }
     }
 

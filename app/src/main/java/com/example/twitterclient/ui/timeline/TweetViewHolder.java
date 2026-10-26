@@ -12,12 +12,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.twitterclient.R;
 import com.example.twitterclient.model.Tweet;
+import com.bumptech.glide.Glide;
 
 public class TweetViewHolder extends RecyclerView.ViewHolder {
 
     private final TextView displayName;
     private final TextView username;
     private final TextView content;
+    private final ImageView tweetMedia;
     private final ImageView replyButton;
     private final ImageView repostButton;
     private final ImageView shareButton;
@@ -31,6 +33,7 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         displayName = itemView.findViewById(R.id.tweet_display_name);
         username = itemView.findViewById(R.id.tweet_username);
         content = itemView.findViewById(R.id.tweet_content);
+        tweetMedia = itemView.findViewById(R.id.tweet_media);
 
         replyButton = itemView.findViewById(R.id.tweet_reply_button);
         repostButton = itemView.findViewById(R.id.tweet_repost_button);
@@ -48,8 +51,36 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     public void bind(Tweet tweet, OnLikeClickListener likeClickListener) {
         displayName.setText(tweet.getDisplayName());
         username.setText("@" + tweet.getUsername());
-        content.setText(tweet.getText());
 
+        String tweetText = tweet.getText();
+
+        if (tweetText == null || tweetText.trim().isEmpty()) {
+            content.setVisibility(View.GONE);
+        } else {
+            content.setText(tweetText);
+            content.setVisibility(View.VISIBLE);
+        }
+        String mediaUrl = tweet.getMediaUrl();
+
+        if (mediaUrl == null || mediaUrl.trim().isEmpty()) {
+
+            // Cancel any previous image loading
+            Glide.with(itemView).clear(tweetMedia);
+
+            // Hide the media view AFTER clearing Glide
+            tweetMedia.setImageDrawable(null);
+            tweetMedia.setVisibility(View.GONE);
+
+        } else {
+
+            tweetMedia.setVisibility(View.VISIBLE);
+
+            String fullUrl = "http://10.0.2.2:3000" + mediaUrl;
+
+            Glide.with(itemView)
+                    .load(fullUrl)
+                    .into(tweetMedia);
+        }
         tvLikeCount.setText(String.valueOf(tweet.getLikeCount()));
         updateLikeUI(tweet.isLikedByMe());
 

@@ -2,17 +2,22 @@ package com.example.twitterclient.ui.timeline;
 
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -32,8 +37,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class TimelineFragment extends Fragment {
 
+public class TimelineFragment extends Fragment {
+    private Uri selectedImageUri;
+    private ImageView imagePreview;
+    private FrameLayout previewContainer;
     private TweetAdapter adapter;
     private RecyclerView recyclerView;
     private TweetRepository repository;
@@ -48,6 +56,20 @@ public class TimelineFragment extends Fragment {
     private View indicatorFollowing;
     private TextView emptyMessage;
 
+    private final ActivityResultLauncher<String> imagePicker =
+            registerForActivityResult(
+                    new ActivityResultContracts.GetContent(),
+                    uri -> {
+                        if (uri != null) {
+                            selectedImageUri = uri;
+
+                            if (imagePreview != null) {
+                                imagePreview.setImageURI(uri);
+                                previewContainer.setVisibility(View.VISIBLE);
+                            }
+                        }
+                    }
+            );
     private final Set<Long> repostRequestsInProgress = new HashSet<>();
 
     @Nullable
@@ -94,14 +116,35 @@ public class TimelineFragment extends Fragment {
         );
         recyclerView.setAdapter(adapter);
 
+        View mediaButton = view.findViewById(R.id.compose_media_button);
+
+        mediaButton.setOnClickListener(v -> {
+            imagePicker.launch("image/*");
+        });
+
+        imagePreview = view.findViewById(R.id.compose_image_preview);
+        previewContainer = view.findViewById(R.id.compose_preview_container);
+
+        view.findViewById(R.id.compose_remove_image).setOnClickListener(v -> {
+            selectedImageUri = null;
+            imagePreview.setImageDrawable(null);
+            previewContainer.setVisibility(View.GONE);
+        });
+
+        if (selectedImageUri != null) {
+            imagePreview.setImageURI(selectedImageUri);
+            previewContainer.setVisibility(View.VISIBLE);
+        }
+
         EditText composeInput = view.findViewById(R.id.compose_input);
         View postButton = view.findViewById(R.id.compose_button);
 
         postButton.setOnClickListener(v -> {
             String text = composeInput.getText().toString().trim();
 
-            if (text.isEmpty()) {
-                composeInput.setError(getString(R.string.empty_tweet));
+            // A tweet must contain text, media, or both
+            if (text.isEmpty() && selectedImageUri == null) {
+                composeInput.setError("Add text or an image");
                 return;
             }
 
@@ -112,9 +155,12 @@ public class TimelineFragment extends Fragment {
 
             postButton.setEnabled(false);
 
-            repository.createTweet(
-                    text,
+            // Remember which image belongs to this post
+            Uri postingImageUri = selectedImageUri;
+
+            TweetRepository.Callback<Tweet> postCallback =
                     new TweetRepository.Callback<Tweet>() {
+
                         @Override
                         public void onSuccess(Tweet tweet) {
                             if (!isAdded()) {
@@ -123,6 +169,11 @@ public class TimelineFragment extends Fragment {
 
                             postButton.setEnabled(true);
                             composeInput.setText("");
+
+                            // Clear selected media after successful posting
+                            selectedImageUri = null;
+                            imagePreview.setImageDrawable(null);
+                            previewContainer.setVisibility(View.GONE);
 
                             showMessage(getString(R.string.post_saved));
                             loadTweets();
@@ -141,8 +192,21 @@ public class TimelineFragment extends Fragment {
                             postButton.setEnabled(true);
                             showMessage(message);
                         }
-                    }
-            );
+                    };
+
+            // Choose the appropriate posting method
+            if (postingImageUri != null) {
+                repository.createTweetWithMedia(
+                        text,
+                        postingImageUri,
+                        postCallback
+                );
+            } else {
+                repository.createTweet(
+                        text,
+                        postCallback
+                );
+            }
         });
 
         TextView logoutButton = view.findViewById(R.id.buttonLogout);
