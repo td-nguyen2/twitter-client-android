@@ -11,7 +11,7 @@
         android:paddingStart="16dp" android:paddingEnd="12dp">
         <TextView android:id="@+id/buttonProfile" android:layout_width="40dp"
             android:layout_height="40dp" android:gravity="center"
-            android:text="◉" android:textSize="27sp" android:textColor="#1D9BF0"
+            android:text="&#9673;" android:textSize="27sp" android:textColor="#1D9BF0"
             android:contentDescription="Open my profile" />
         <TextView android:layout_width="0dp" android:layout_height="wrap_content"
             android:layout_weight="1" android:gravity="center"
@@ -23,21 +23,40 @@
             android:text="Log out" android:textColor="#536471" android:textSize="13sp" />
     </LinearLayout>
 
-    <!-- Visual-only tabs -->
+    <!-- Tabs: "For you" shows all posts, "Following" shows followed users only -->
     <LinearLayout android:layout_width="match_parent" android:layout_height="49dp"
         android:orientation="horizontal">
-        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent"
-            android:layout_weight="1" android:gravity="center" android:orientation="vertical">
-            <TextView android:layout_width="wrap_content" android:layout_height="0dp"
+
+        <LinearLayout android:id="@+id/tab_for_you"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center"
+            android:orientation="vertical"
+            android:clickable="true" android:focusable="true">
+            <TextView android:id="@+id/tab_for_you_text"
+                android:layout_width="wrap_content" android:layout_height="0dp"
                 android:layout_weight="1" android:gravity="center"
                 android:text="For you" android:textStyle="bold" android:textSize="15sp"
                 android:textColor="#0F1419" />
-            <View android:layout_width="72dp" android:layout_height="4dp"
+            <View android:id="@+id/indicator_for_you"
+                android:layout_width="72dp" android:layout_height="4dp"
                 android:background="@drawable/ui_blue_indicator" />
         </LinearLayout>
-        <TextView android:layout_width="0dp" android:layout_height="match_parent"
+
+        <LinearLayout android:id="@+id/tab_following"
+            android:layout_width="0dp" android:layout_height="match_parent"
             android:layout_weight="1" android:gravity="center"
-            android:text="Following" android:textSize="15sp" android:textColor="#536471" />
+            android:orientation="vertical"
+            android:clickable="true" android:focusable="true">
+            <TextView android:id="@+id/tab_following_text"
+                android:layout_width="wrap_content" android:layout_height="0dp"
+                android:layout_weight="1" android:gravity="center"
+                android:text="Following" android:textSize="15sp"
+                android:textColor="#536471" />
+            <View android:id="@+id/indicator_following"
+                android:layout_width="72dp" android:layout_height="4dp"
+                android:background="@drawable/ui_blue_indicator"
+                android:visibility="invisible" />
+        </LinearLayout>
     </LinearLayout>
     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EFF3F4" />
 
@@ -51,7 +70,7 @@
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
             android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
             <TextView android:layout_width="match_parent" android:layout_height="46dp"
-                android:gravity="center_vertical" android:text="What’s happening?"
+                android:gravity="center_vertical" android:text="What&#8217;s happening?"
                 android:textSize="18sp" android:textColor="#536471" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:gravity="center_vertical" android:orientation="horizontal">
@@ -63,13 +82,11 @@
                     android:textColor="#1D9BF0" />
                 <TextView android:layout_width="wrap_content" android:layout_height="36dp"
                     android:layout_marginStart="17dp" android:gravity="center"
-                    android:text="▤" android:textSize="23sp" android:textColor="#1D9BF0" />
+                    android:text="&#9636;" android:textSize="23sp" android:textColor="#1D9BF0" />
                 <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
                 <Button android:id="@+id/compose_button"
                     android:layout_width="wrap_content" android:layout_height="48dp"
-
                     android:minHeight="48dp" android:minWidth="48dp"
-
                     android:backgroundTint="#1D9BF0" android:text="Post"
                     android:textAllCaps="false" android:textStyle="bold"
                     android:textColor="#FFFFFF" />
@@ -78,25 +95,52 @@
     </LinearLayout>
     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EFF3F4" />
 
-    <!-- Existing Java RecyclerView ID preserved -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/timeline_recycler_view"
+    <!-- Post list, with a message shown on top of it when the list is empty -->
+    <FrameLayout
         android:layout_width="match_parent" android:layout_height="0dp"
-        android:layout_weight="1" android:clipToPadding="false" />
+        android:layout_weight="1">
 
-    <!-- Navigation icons are visual-only until their screens are implemented -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/timeline_recycler_view"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:clipToPadding="false" />
+
+        <TextView
+            android:id="@+id/timeline_empty_message"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:padding="32dp"
+            android:textSize="15sp" android:textColor="#536471"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <!-- Bottom navigation: Home, Notifications and Profile are wired up -->
     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EFF3F4" />
     <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
         android:gravity="center" android:orientation="horizontal">
-        <ImageView android:layout_width="0dp" android:layout_height="24dp"
-            android:layout_weight="1" android:src="@drawable/ui_icon_home" android:contentDescription="Home" />
-        <ImageView android:layout_width="0dp" android:layout_height="24dp"
-            android:layout_weight="1" android:src="@drawable/ui_icon_search" android:contentDescription="Search (coming soon)" />
-        <ImageView android:layout_width="0dp" android:layout_height="24dp"
-            android:layout_weight="1" android:src="@drawable/ui_icon_bell" android:contentDescription="Notifications (coming soon)" />
-        <ImageView android:layout_width="0dp" android:layout_height="24dp"
-            android:layout_weight="1" android:src="@drawable/ui_icon_mail" android:contentDescription="Messages (coming soon)" />
-        <ImageView android:layout_width="0dp" android:layout_height="24dp"
-            android:layout_weight="1" android:src="@drawable/ui_icon_person" android:contentDescription="Profile (coming soon)" />
+        <ImageView android:id="@+id/nav_home"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:padding="16dp"
+            android:src="@drawable/ui_icon_home" android:contentDescription="Home"
+            android:clickable="true" android:focusable="true" />
+        <ImageView android:id="@+id/nav_search"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:padding="16dp"
+            android:src="@drawable/ui_icon_search" android:contentDescription="Search (coming soon)" />
+        <ImageView android:id="@+id/nav_notifications"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:padding="16dp"
+            android:src="@drawable/ui_icon_bell" android:contentDescription="Notifications"
+            android:clickable="true" android:focusable="true" />
+        <ImageView android:id="@+id/nav_messages"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:padding="16dp"
+            android:src="@drawable/ui_icon_mail" android:contentDescription="Messages (coming soon)" />
+        <ImageView android:id="@+id/nav_profile"
+            android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:padding="16dp"
+            android:src="@drawable/ui_icon_person" android:contentDescription="Profile"
+            android:clickable="true" android:focusable="true" />
     </LinearLayout>
 </LinearLayout>

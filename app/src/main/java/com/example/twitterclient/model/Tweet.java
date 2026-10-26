@@ -22,20 +22,19 @@ public class Tweet {
         this.text = text;
     }
 
-    // Used by ProfileFragment (parses a tweet straight from JSON)
+    // Builds a tweet straight from the server JSON (timeline, profile, create post)
     public Tweet(JSONObject json) throws JSONException {
-        this.id = json.optLong("id", json.optLong("_id", 0L));
+        this.id = json.optLong("id", 0L);
         this.username = json.optString("username", "");
-        this.displayName = json.optString(
-                "displayName",
-                json.optString("display_name", this.username)
-        );
-        this.text = json.optString("text", json.optString("content", ""));
-        this.likeCount = json.optInt("likeCount", json.optInt("like_count", 0));
-        this.likedByMe = json.optBoolean(
-                "likedByMe",
-                json.optBoolean("liked_by_me", false)
-        );
+        this.displayName = json.optString("displayName", this.username);
+        this.text = json.optString("content", json.optString("text", ""));
+        this.likeCount = json.optInt("likeCount", 0);
+
+        // The server sends likedByMe as 0/1 in post lists and as true/false
+        // in the like response, so accept both.
+        Object liked = json.opt("likedByMe");
+        this.likedByMe = (liked instanceof Boolean && (Boolean) liked)
+                || (liked instanceof Number && ((Number) liked).intValue() != 0);
     }
 
     public long getId() {

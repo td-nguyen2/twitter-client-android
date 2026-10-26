@@ -196,7 +196,8 @@ public class ProfileFragment extends Fragment {
                             tweetJson.put("displayName", name);
                             tweetJson.put("text", content);
                             tweetJson.put("likeCount", post.optInt("likeCount", 0));
-                            tweetJson.put("likedByMe", post.optBoolean("likedByMe", false));
+                            // Server sends 0/1, so pass the raw value through (Tweet reads both forms)
+                            tweetJson.put("likedByMe", post.opt("likedByMe"));
 
                             tweets.add(new Tweet(tweetJson));
                         }
