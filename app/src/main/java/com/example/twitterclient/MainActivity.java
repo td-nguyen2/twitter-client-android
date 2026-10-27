@@ -119,6 +119,18 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
     }
 
+    // Open Post Detail screen from just a post id (e.g. from a notification)
+    public void showPostDetail(long postId) {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(
+                        R.id.fragment_container,
+                        PostDetailFragment.newInstance(postId)
+                )
+                .addToBackStack(null)
+                .commit();
+    }
+
     // Helper method to switch fragments
     private void openFragment(Fragment fragment) {
         getSupportFragmentManager()

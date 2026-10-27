@@ -129,6 +129,28 @@ public class ApiService {
         queue.add(request);
     }
 
+    // GET one post with its counters (reply/repost/like counts, my flags)
+    public void getPost(
+            long postId,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure) {
+
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.GET,
+                BASE_URL + "/api/posts/" + postId,
+                null,
+                success,
+                failure
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                return getAuthHeaders();
+            }
+        };
+
+        queue.add(request);
+    }
+
     // Get replies for a post
     public void getReplies(
             long postId,
@@ -343,6 +365,61 @@ public class ApiService {
 
         queue.add(request);
     }
+    
+public void createReplyWithMedia(
+        long postId,
+        String content,
+        Uri mediaUri,
+        Response.Listener<JSONObject> success,
+        Response.ErrorListener failure
+) throws IOException {
+
+    String mimeType = context.getContentResolver().getType(mediaUri);
+
+    if (mimeType == null
+            || (!mimeType.equals("image/jpeg")
+            && !mimeType.equals("image/png")
+            && !mimeType.equals("image/webp")
+            && !mimeType.equals("image/gif"))) {
+        throw new IOException("Unsupported media type");
+    }
+
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+    try (InputStream input =
+                 context.getContentResolver().openInputStream(mediaUri)) {
+
+        if (input == null) {
+            throw new IOException("Cannot open selected media");
+        }
+
+        byte[] buffer = new byte[8192];
+        int count;
+
+        while ((count = input.read(buffer)) != -1) {
+            if (output.size() + count > 10 * 1024 * 1024) {
+                throw new IOException("Media exceeds 10 MB");
+            }
+
+            output.write(buffer, 0, count);
+        }
+    }
+
+    String replyText = content == null ? "" : content.trim();
+
+    MultipartRequest request = new MultipartRequest(
+            BASE_URL + "/api/posts/" + postId + "/replies",
+            replyText,
+            output.toByteArray(),
+            mimeType,
+            getAuthHeaders(),
+            success,
+            failure
+    );
+
+    queue.add(request);
+}
+
 
     // Get current user's repost status
     public void getRepostStatus(

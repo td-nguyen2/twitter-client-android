@@ -90,6 +90,15 @@
                     android:textColor="#536471" />
 
                 <TextView
+                    android:id="@+id/tweet_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:maxLines="1"
+                    android:textSize="13sp"
+                    android:textColor="#536471" />
+
+                <TextView
                     android:layout_width="26dp"
                     android:layout_height="28dp"
                     android:gravity="center"
@@ -125,27 +134,63 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <ImageView
-                    android:id="@+id/tweet_reply_button"
+                <!-- Reply: icon + reply count -->
+                <LinearLayout
+                    android:id="@+id/btn_reply_container"
                     android:layout_width="0dp"
-                    android:layout_height="19dp"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
-                    android:src="@drawable/ui_icon_reply"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:contentDescription="Reply"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:padding="1dp" />
+                    android:background="?attr/selectableItemBackgroundBorderless">
 
-                <ImageView
-                    android:id="@+id/tweet_repost_button"
+                    <ImageView
+                        android:id="@+id/iv_reply_icon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ui_icon_reply"
+                        android:importantForAccessibility="no" />
+
+                    <TextView
+                        android:id="@+id/tv_reply_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:textSize="12sp"
+                        android:textColor="#536471" />
+                </LinearLayout>
+
+                <!-- Repost: icon + repost count, turns green once you reposted -->
+                <LinearLayout
+                    android:id="@+id/btn_repost_container"
                     android:layout_width="0dp"
-                    android:layout_height="19dp"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
-                    android:src="@drawable/ui_icon_repost"
-                    android:contentDescription="Repost"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:clickable="true"
                     android:focusable="true"
-                    android:padding="1dp" />
+                    android:contentDescription="Repost"
+                    android:background="?attr/selectableItemBackgroundBorderless">
+
+                    <ImageView
+                        android:id="@+id/iv_repost_icon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ui_icon_repost"
+                        android:importantForAccessibility="no" />
+
+                    <TextView
+                        android:id="@+id/tv_repost_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:textSize="12sp"
+                        android:textColor="#536471" />
+                </LinearLayout>
 
                 <!-- Like button: icon + like count -->
                 <LinearLayout

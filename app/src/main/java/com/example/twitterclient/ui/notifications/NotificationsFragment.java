@@ -58,6 +58,9 @@ public class NotificationsFragment extends Fragment {
         adapter.setOnActorClickListener(username ->
                 ((MainActivity) requireActivity()).showUserProfile(username)
         );
+        adapter.setOnPostClickListener(postId ->
+                ((MainActivity) requireActivity()).showPostDetail(postId)
+        );
 
         recyclerView = view.findViewById(R.id.notifications_recycler_view);
         recyclerView.setLayoutManager(

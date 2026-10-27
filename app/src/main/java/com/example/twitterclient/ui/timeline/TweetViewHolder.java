@@ -2,6 +2,7 @@ package com.example.twitterclient.ui.timeline;
 
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -11,7 +12,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.twitterclient.R;
+import com.example.twitterclient.auth.SessionManager;
 import com.example.twitterclient.model.Tweet;
+import com.example.twitterclient.util.TimeUtils;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 
@@ -22,8 +25,12 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     private final TextView content;
     private final ImageView tweetMedia;
     private final ImageView tweetAvatar;
-    private final ImageView replyButton;
-    private final ImageView repostButton;
+    private final TextView time;
+    private final View replyButton;
+    private final View repostButton;
+    private final ImageView ivRepostIcon;
+    private final TextView tvReplyCount;
+    private final TextView tvRepostCount;
     private final ImageView shareButton;
     private final LinearLayout btnLikeContainer;
     private final ImageView ivLikeIcon;
@@ -39,8 +46,12 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         content = itemView.findViewById(R.id.tweet_content);
         tweetMedia = itemView.findViewById(R.id.tweet_media);
         tweetAvatar = itemView.findViewById(R.id.tweet_avatar);
-        replyButton = itemView.findViewById(R.id.tweet_reply_button);
-        repostButton = itemView.findViewById(R.id.tweet_repost_button);
+        time = itemView.findViewById(R.id.tweet_time);
+        replyButton = itemView.findViewById(R.id.btn_reply_container);
+        repostButton = itemView.findViewById(R.id.btn_repost_container);
+        ivRepostIcon = itemView.findViewById(R.id.iv_repost_icon);
+        tvReplyCount = itemView.findViewById(R.id.tv_reply_count);
+        tvRepostCount = itemView.findViewById(R.id.tv_repost_count);
         shareButton = itemView.findViewById(R.id.tweet_share_button);
 
         btnLikeContainer = itemView.findViewById(R.id.btn_like_container);
@@ -58,6 +69,9 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     public void bind(Tweet tweet, OnLikeClickListener likeClickListener) {
         displayName.setText(tweet.getDisplayName());
         username.setText("@" + tweet.getUsername());
+
+        String ago = TimeUtils.shortAgo(tweet.getCreatedAt());
+        time.setText(ago.isEmpty() ? "" : "\u00B7 " + ago);
 
         String profileImageUrl = tweet.getProfileImageUrl();
 
@@ -80,14 +94,18 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
             Glide.with(itemView).clear(tweetAvatar);
             tweetAvatar.setImageResource(R.drawable.ui_default_avatar);
         }
-        // "X reposted" line, shown only when the list sets repostedBy
+        // "X reposted" line, shown only on rows that are reposts
         String repostedBy = tweet.getRepostedBy();
 
         if (repostHeader != null && repostLabel != null) {
             if (repostedBy == null || repostedBy.trim().isEmpty()) {
                 repostHeader.setVisibility(View.GONE);
             } else {
-                repostLabel.setText(repostedBy + " reposted");
+                String me = new SessionManager(itemView.getContext()).getUsername();
+                boolean byMe = me != null
+                        && me.equalsIgnoreCase(tweet.getRepostedByUsername());
+
+                repostLabel.setText(byMe ? "You reposted" : repostedBy + " reposted");
                 repostHeader.setVisibility(View.VISIBLE);
             }
         }
@@ -121,8 +139,7 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
                     .load(fullUrl)
                     .into(tweetMedia);
         }
-        tvLikeCount.setText(String.valueOf(tweet.getLikeCount()));
-        updateLikeUI(tweet.isLikedByMe());
+        updateStats(tweet);
 
         if (btnLikeContainer != null) {
             btnLikeContainer.setOnClickListener(v -> {
@@ -138,6 +155,32 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         ivLikeIcon.setImageResource(R.drawable.ui_icon_heart);
         ivLikeIcon.setImageTintList(ColorStateList.valueOf(color));
         tvLikeCount.setTextColor(color);
+    }
+
+    /** Redraws only the counters and the like/repost colours (no image reload). */
+    public void updateStats(Tweet tweet) {
+        tvLikeCount.setText(countText(tweet.getLikeCount()));
+        updateLikeUI(tweet.isLikedByMe());
+        updateReplyUI(tweet.getReplyCount());
+        updateRepostUI(tweet.isRepostedByMe(), tweet.getRepostCount());
+    }
+
+    // A zero count is hidden, like on Twitter
+    private static String countText(int count) {
+        return count > 0 ? TimeUtils.compactCount(count) : "";
+    }
+
+    public void updateReplyUI(int replyCount) {
+        tvReplyCount.setText(countText(replyCount));
+    }
+
+    // Green icon and number while you have reposted the tweet
+    public void updateRepostUI(boolean repostedByMe, int repostCount) {
+        int color = Color.parseColor(repostedByMe ? "#00BA7C" : "#536471");
+        ivRepostIcon.setImageTintList(ColorStateList.valueOf(color));
+        tvRepostCount.setTextColor(color);
+        tvRepostCount.setText(countText(repostCount));
+        tvRepostCount.setTypeface(null, repostedByMe ? Typeface.BOLD : Typeface.NORMAL);
     }
 
     public void setOnAuthorClickListener(View.OnClickListener listener) {

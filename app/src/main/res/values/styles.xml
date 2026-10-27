@@ -6,4 +6,24 @@
         <item name="android:statusBarColor">#FFFFFF</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
+
+    <!-- Full-screen "reply" composer -->
+    <style name="Theme.TwitterStarter.ReplyDialog" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorAccent">#1D9BF0</item>
+        <item name="colorPrimary">#1D9BF0</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowSoftInputMode">stateVisible|adjustResize</item>
+    </style>
+
+    <!-- Bottom sheet (repost menu) -->
+    <style name="Theme.TwitterStarter.Sheet" parent="Theme.AppCompat.Light.Dialog">
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowMinWidthMajor">100%</item>
+        <item name="android:windowMinWidthMinor">100%</item>
+    </style>
 </resources>
