@@ -211,7 +211,19 @@ public class ProfileFragment extends Fragment {
                             // Server sends 0/1, so pass the raw value through (Tweet reads both forms)
                             tweetJson.put("likedByMe", post.opt("likedByMe"));
 
-                            tweets.add(new Tweet(tweetJson));
+                            Tweet tweet = new Tweet(tweetJson);
+
+                            // The server marks the posts this profile reposted
+                            Object repostFlag = post.opt("isRepost");
+                            boolean isRepost = Boolean.TRUE.equals(repostFlag)
+                                    || (repostFlag instanceof Number
+                                    && ((Number) repostFlag).intValue() != 0);
+
+                            if (isRepost) {
+                                tweet.setRepostedBy(name);
+                            }
+
+                            tweets.add(tweet);
                         }
 
                         tweetAdapter.replaceTweets(tweets);

@@ -26,6 +26,8 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     private final LinearLayout btnLikeContainer;
     private final ImageView ivLikeIcon;
     private final TextView tvLikeCount;
+    private final View repostHeader;
+    private final TextView repostLabel;
 
     public TweetViewHolder(@NonNull View itemView) {
         super(itemView);
@@ -42,6 +44,9 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         btnLikeContainer = itemView.findViewById(R.id.btn_like_container);
         ivLikeIcon = itemView.findViewById(R.id.iv_like_icon);
         tvLikeCount = itemView.findViewById(R.id.tv_like_count);
+
+        repostHeader = itemView.findViewById(R.id.tweet_repost_header);
+        repostLabel = itemView.findViewById(R.id.tweet_repost_label);
     }
 
     public void bind(Tweet tweet) {
@@ -51,6 +56,18 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     public void bind(Tweet tweet, OnLikeClickListener likeClickListener) {
         displayName.setText(tweet.getDisplayName());
         username.setText("@" + tweet.getUsername());
+
+        // "X reposted" line, shown only when the list sets repostedBy
+        String repostedBy = tweet.getRepostedBy();
+
+        if (repostHeader != null && repostLabel != null) {
+            if (repostedBy == null || repostedBy.trim().isEmpty()) {
+                repostHeader.setVisibility(View.GONE);
+            } else {
+                repostLabel.setText(repostedBy + " reposted");
+                repostHeader.setVisibility(View.VISIBLE);
+            }
+        }
 
         String tweetText = tweet.getText();
 
