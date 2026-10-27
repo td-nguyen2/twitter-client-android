@@ -5,6 +5,39 @@
     android:background="#FFFFFF"
     android:orientation="vertical">
 
+    <!-- "X reposted" line, hidden unless the tweet was reposted -->
+    <LinearLayout
+        android:id="@+id/tweet_repost_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="8dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="42dp"
+            android:layout_height="16dp"
+            android:scaleType="fitEnd"
+            android:src="@drawable/ui_icon_repost"
+            android:tint="#536471"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:id="@+id/tweet_repost_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#536471" />
+    </LinearLayout>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

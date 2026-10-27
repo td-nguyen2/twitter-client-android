@@ -12,6 +12,9 @@ public class Tweet {
     private int likeCount;
     private boolean likedByMe;
 
+    // Name shown in the "X reposted" line above the tweet (only set on the Reposts tab)
+    private String repostedBy;
+
     public Tweet(String displayName, String username, String text) {
         this(0L, displayName, username, text);
     }
@@ -72,5 +75,13 @@ public class Tweet {
 
     public void setLikedByMe(boolean likedByMe) {
         this.likedByMe = likedByMe;
+    }
+
+    public String getRepostedBy() {
+        return repostedBy;
+    }
+
+    public void setRepostedBy(String repostedBy) {
+        this.repostedBy = repostedBy;
     }
 }
