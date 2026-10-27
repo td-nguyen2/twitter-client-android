@@ -222,6 +222,7 @@ app.get("/api/posts", async (req, res) => {
         const [posts] = await db.execute(
             `SELECT p.id, p.username,
                     COALESCE(u.display_name, p.username) AS displayName,
+                    u.profile_image_url AS profileImageUrl,
                     p.content, p.media_url AS mediaUrl, p.created_at,
                     (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
                     ${currentUserId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ${Number(currentUserId)})` : "0"} AS likedByMe
@@ -672,6 +673,7 @@ app.get("/api/users/:id/posts", async (req, res) => {
         const [posts] = await db.execute(
             `SELECT p.id, p.username,
                     COALESCE(u.display_name, p.username) AS displayName,
+                    u.profile_image_url AS profileImageUrl,
                     p.content, p.media_url AS mediaUrl, p.created_at,
                     (p.username <> ?) AS isRepost,
                     (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
@@ -755,6 +757,78 @@ app.patch("/api/users/me", requireAuth, async (req, res) => {
     }
 });
 
+app.post(
+    "/api/users/me/avatar",
+    requireAuth,
+    upload.single("avatar"),
+    async (req, res) => {
+
+        if (!req.file) {
+            return res.status(400).json({
+                error: "No avatar image provided"
+            });
+        }
+
+        const imageUrl = `/uploads/${req.file.filename}`;
+
+        try {
+            await db.execute(
+                `UPDATE users
+                 SET profile_image_url = ?
+                 WHERE id = ?`,
+                [imageUrl, req.authUser.id]
+            );
+
+            return res.json({
+                message: "Avatar updated",
+                profileImageUrl: imageUrl
+            });
+
+        } catch (error) {
+            console.error("Avatar upload error:", error.message);
+
+            return res.status(500).json({
+                error: "Unable to update avatar"
+            });
+        }
+    }
+);
+app.post(
+    "/api/users/me/banner",
+    requireAuth,
+    upload.single("banner"),
+    async (req, res) => {
+
+        if (!req.file) {
+            return res.status(400).json({
+                error: "No banner image provided"
+            });
+        }
+
+        const imageUrl = `/uploads/${req.file.filename}`;
+
+        try {
+            await db.execute(
+                `UPDATE users
+                 SET banner_image_url = ?
+                 WHERE id = ?`,
+                [imageUrl, req.authUser.id]
+            );
+
+            return res.json({
+                message: "Banner updated",
+                bannerImageUrl: imageUrl
+            });
+
+        } catch (error) {
+            console.error("Banner upload error:", error.message);
+
+            return res.status(500).json({
+                error: "Unable to update banner"
+            });
+        }
+    }
+);
 // ==========================================
 // SOCIAL FEATURES: LIKES, FOLLOWS, FEED, NOTIFICATIONS
 // ==========================================
@@ -766,6 +840,7 @@ app.get("/api/posts/following", requireAuth, async (req, res) => {
         const [posts] = await db.execute(
             `SELECT p.id, p.username,
                     COALESCE(u.display_name, p.username) AS displayName,
+                    u.profile_image_url AS profileImageUrl,
                     p.content, p.media_url AS mediaUrl, p.created_at,
                     (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
                     EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS likedByMe

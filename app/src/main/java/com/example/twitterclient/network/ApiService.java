@@ -204,7 +204,123 @@ public class ApiService {
         );
 
         queue.add(request);
+    }public void uploadAvatar(
+            Uri avatarUri,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure
+    ) throws IOException {
+
+        // 1. Determine the image's MIME type
+        String mimeType = context.getContentResolver().getType(avatarUri);
+
+        if (mimeType == null) {
+            throw new IOException("Unable to determine avatar type");
+        }
+
+        if (!mimeType.equals("image/jpeg")
+                && !mimeType.equals("image/png")
+                && !mimeType.equals("image/webp")
+                && !mimeType.equals("image/gif")) {
+            throw new IOException("Unsupported avatar type");
+        }
+
+        // 2. Read the image into memory
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+        try (InputStream input =
+                     context.getContentResolver().openInputStream(avatarUri)) {
+
+            if (input == null) {
+                throw new IOException("Cannot open selected avatar");
+            }
+
+            byte[] buffer = new byte[8192];
+            int count;
+
+            while ((count = input.read(buffer)) != -1) {
+                if (output.size() + count > 10 * 1024 * 1024) {
+                    throw new IOException("Avatar exceeds 10 MB");
+                }
+
+                output.write(buffer, 0, count);
+            }
+        }
+
+        byte[] avatarBytes = output.toByteArray();
+
+        // 3. Create a multipart request
+        MultipartRequest request = new MultipartRequest(
+                BASE_URL + "/api/users/me/avatar",
+                avatarBytes,
+                mimeType,
+                "avatar",
+                getAuthHeaders(),
+                success,
+                failure
+        );
+
+        // 4. Send the request
+        queue.add(request);
     }
+
+    public void uploadBanner(
+            Uri bannerUri,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure
+    ) throws IOException {
+
+        // Determine the image type
+        String mimeType = context.getContentResolver().getType(bannerUri);
+
+        if (mimeType == null) {
+            throw new IOException("Unable to determine banner type");
+        }
+
+        if (!mimeType.equals("image/jpeg")
+                && !mimeType.equals("image/png")
+                && !mimeType.equals("image/webp")
+                && !mimeType.equals("image/gif")) {
+            throw new IOException("Unsupported banner type");
+        }
+
+        // Read image bytes
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+        try (InputStream input =
+                     context.getContentResolver().openInputStream(bannerUri)) {
+
+            if (input == null) {
+                throw new IOException("Cannot open selected banner");
+            }
+
+            byte[] buffer = new byte[8192];
+            int count;
+
+            while ((count = input.read(buffer)) != -1) {
+                if (output.size() + count > 10 * 1024 * 1024) {
+                    throw new IOException("Banner exceeds 10 MB");
+                }
+
+                output.write(buffer, 0, count);
+            }
+        }
+
+        byte[] bannerBytes = output.toByteArray();
+
+        // Send the file to the banner endpoint
+        MultipartRequest request = new MultipartRequest(
+                BASE_URL + "/api/users/me/banner",
+                bannerBytes,
+                mimeType,
+                "banner",
+                getAuthHeaders(),
+                success,
+                failure
+        );
+
+        queue.add(request);
+    }
+
     // Create a reply
     public void createReply(
             long postId,
