@@ -1,5 +1,12 @@
 package com.example.twitterclient.ui.profile;
+import com.example.twitterclient.network.ApiService;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 
+import android.net.Uri;
+import android.widget.ImageView;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.text.InputType;
@@ -38,6 +45,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.HashMap;
 import java.util.Map;
+import java.io.IOException;
 
 public class ProfileFragment extends Fragment {
     private Button buttonFollow;
@@ -52,7 +60,13 @@ public class ProfileFragment extends Fragment {
     private TextView bio;
     private TextView joinedDate;
     private TextView emptyMessage;
+    private Uri selectedAvatarUri;
+    private Uri selectedBannerUri;
 
+    private ImageView editAvatarPreview;
+    private ImageView editBannerPreview;
+    private ImageView profileAvatar;
+    private ImageView profileBanner;
     private static final String ARG_USERNAME = "profile_username";
 
     public static ProfileFragment forUsername(String username) {
@@ -76,7 +90,33 @@ public class ProfileFragment extends Fragment {
                 false
         );
     }
+    private final ActivityResultLauncher<String> avatarPicker =
+            registerForActivityResult(
+                    new ActivityResultContracts.GetContent(),
+                    uri -> {
+                        if (uri != null) {
+                            selectedAvatarUri = uri;
 
+                            if (editAvatarPreview != null) {
+                                editAvatarPreview.setImageURI(uri);
+                            }
+                        }
+                    }
+            );
+
+    private final ActivityResultLauncher<String> bannerPicker =
+            registerForActivityResult(
+                    new ActivityResultContracts.GetContent(),
+                    uri -> {
+                        if (uri != null) {
+                            selectedBannerUri = uri;
+
+                            if (editBannerPreview != null) {
+                                editBannerPreview.setImageURI(uri);
+                            }
+                        }
+                    }
+            );
     @Override
     public void onViewCreated(
             @NonNull View view,
@@ -95,7 +135,8 @@ public class ProfileFragment extends Fragment {
         bio = view.findViewById(R.id.textBio);
         joinedDate = view.findViewById(R.id.textJoinedDate);
         emptyMessage = view.findViewById(R.id.textProfileEmpty);
-
+        profileAvatar = view.findViewById(R.id.imageProfileAvatar);
+        profileBanner = view.findViewById(R.id.imageProfileBanner);
         // Reuse the existing timeline TweetAdapter.
         RecyclerView recycler = view.findViewById(R.id.recyclerProfilePosts);
 
@@ -144,6 +185,51 @@ public class ProfileFragment extends Fragment {
                         String handle = user.optString("username", "");
                         String description = user.optString("bio", "");
                         String createdAt = user.optString("createdAt", "");
+                        String profileImageUrl = user.isNull("profileImageUrl")
+                                ? null
+                                : user.optString("profileImageUrl", null);
+
+                        if (profileImageUrl != null
+                                && !profileImageUrl.isEmpty()
+                                && !profileImageUrl.equals("null")) {
+
+                            String fullUrl = profileImageUrl.startsWith("http")
+                                    ? profileImageUrl
+                                    : "http://10.0.2.2:3000" + profileImageUrl;
+
+                            Glide.with(this)
+                                    .load(fullUrl)
+                                    .transform(new CircleCrop())
+                                    .placeholder(R.drawable.ui_default_avatar)
+                                    .error(R.drawable.ui_default_avatar)
+                                    .into(profileAvatar);
+
+                        } else {
+                            Glide.with(this).clear(profileAvatar);
+                            profileAvatar.setImageResource(R.drawable.ui_default_avatar);
+                        }
+
+                        String bannerImageUrl = user.isNull("bannerImageUrl")
+                                ? null
+                                : user.optString("bannerImageUrl", null);
+
+                        if (bannerImageUrl != null
+                                && !bannerImageUrl.isEmpty()
+                                && !bannerImageUrl.equals("null")) {
+
+                            String fullBannerUrl = bannerImageUrl.startsWith("http")
+                                    ? bannerImageUrl
+                                    : "http://10.0.2.2:3000" + bannerImageUrl;
+
+                            Glide.with(this)
+                                    .load(fullBannerUrl)
+                                    .centerCrop()
+                                    .into(profileBanner);
+
+                        } else {
+                            Glide.with(this).clear(profileBanner);
+                            profileBanner.setImageDrawable(null);
+                        }
 
                         profileTitle.setText(name);
                         displayName.setText(name);
@@ -203,6 +289,9 @@ public class ProfileFragment extends Fragment {
                             tweetJson.put("id", post.optInt("id", 0));
                             tweetJson.put("username", postUsername);
                             tweetJson.put("displayName", post.optString("displayName", postUsername));
+                            if (!post.isNull("profileImageUrl")) {
+                                tweetJson.put("profileImageUrl", post.optString("profileImageUrl", ""));
+                            }
                             tweetJson.put("text", content);
                             if (!post.isNull("mediaUrl")) {
                                 tweetJson.put("mediaUrl", post.optString("mediaUrl", ""));
@@ -261,69 +350,221 @@ public class ProfileFragment extends Fragment {
     }
 
     private void showEditProfileDialog() {
-        LinearLayout layout = new LinearLayout(requireContext());
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(48, 24, 48, 8);
 
-        EditText nameInput = new EditText(requireContext());
-        nameInput.setHint("Display name");
-        nameInput.setSingleLine(true);
+        // Load our custom XML layout
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_edit_profile, null);
+
+        EditText nameInput = dialogView.findViewById(R.id.edit_profile_name);
+        EditText bioInput = dialogView.findViewById(R.id.edit_profile_bio);
+
+        View closeButton = dialogView.findViewById(R.id.edit_profile_close);
+        Button saveButton = dialogView.findViewById(R.id.edit_profile_save);
+        ApiService apiService = new ApiService(requireContext());
+        editAvatarPreview = dialogView.findViewById(R.id.edit_avatar_preview);
+        editBannerPreview = dialogView.findViewById(R.id.edit_banner_preview);
+
+        View avatarButton = dialogView.findViewById(R.id.edit_avatar_button);
+        View bannerButton = dialogView.findViewById(R.id.edit_banner_button);
+
+        avatarButton.setOnClickListener(v -> avatarPicker.launch("image/*"));
+        bannerButton.setOnClickListener(v -> bannerPicker.launch("image/*"));
+
+        // Preserve the user's current name and bio
         nameInput.setText(displayName.getText());
-
-        EditText bioInput = new EditText(requireContext());
-        bioInput.setHint("Bio");
-        bioInput.setMinLines(3);
-        bioInput.setMaxLines(5);
-        bioInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         bioInput.setText(bio.getText());
+        // Show the current saved avatar and banner in Edit Profile
+        if (profileAvatar.getDrawable() != null) {
+            editAvatarPreview.setImageDrawable(
+                    profileAvatar.getDrawable().getConstantState() != null
+                            ? profileAvatar.getDrawable()
+                            .getConstantState().newDrawable().mutate()
+                            : profileAvatar.getDrawable()
+            );
+        }
 
-        layout.addView(nameInput);
-        layout.addView(bioInput);
+        if (profileBanner.getDrawable() != null) {
+            editBannerPreview.setImageDrawable(
+                    profileBanner.getDrawable().getConstantState() != null
+                            ? profileBanner.getDrawable()
+                            .getConstantState().newDrawable().mutate()
+                            : profileBanner.getDrawable()
+            );
+        }
 
+        // Create the custom dialog
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setTitle("Edit profile")
-                .setView(layout)
-                .setNegativeButton("Cancel", (d, which) -> {})
-                .setPositiveButton("Save", null)
+                .setView(dialogView)
                 .create();
 
-        dialog.setOnShowListener(ignored -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String newName = nameInput.getText().toString().trim();
-                String newBio = bioInput.getText().toString().trim();
+        // Close without saving
+        closeButton.setOnClickListener(v -> dialog.dismiss());
 
-                if (newName.isEmpty()) {
-                    nameInput.setError("Display name is required");
+        // Save the edited profile
+
+        // Save name, bio, and optionally the selected avatar
+
+        saveButton.setOnClickListener(v -> {
+            String newName = nameInput.getText().toString().trim();
+            String newBio = bioInput.getText().toString().trim();
+
+            if (newName.isEmpty()) {
+                nameInput.setError("Display name is required");
+                return;
+            }
+
+            saveButton.setEnabled(false);
+
+            // Remember which images were selected for this save
+            Uri avatarToUpload = selectedAvatarUri;
+            Uri bannerToUpload = selectedBannerUri;
+
+            // Called only after every requested update succeeds
+            Runnable finishSave = () -> {
+                if (!isAdded() || !dialog.isShowing()) return;
+
+                dialog.dismiss();
+                loadMyProfile();
+
+                Toast.makeText(
+                        requireContext(),
+                        "Profile updated",
+                        Toast.LENGTH_SHORT
+                ).show();
+            };
+
+            // Upload banner after the avatar stage finishes
+            Runnable uploadBannerStep = () -> {
+                if (!isAdded() || !dialog.isShowing()) return;
+
+                if (bannerToUpload == null) {
+                    finishSave.run();
                     return;
                 }
 
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                try {
+                    apiService.uploadBanner(
+                            bannerToUpload,
 
-                repository.updateMyProfile(
-                        newName,
-                        newBio,
-                        response -> {
-                            if (!isAdded()) {
-                                dialog.dismiss();
-                                return;
+                            response -> {
+                                if (!isAdded() || !dialog.isShowing()) return;
+
+                                selectedBannerUri = null;
+                                finishSave.run();
+                            },
+
+                            error -> {
+                                if (!isAdded() || !dialog.isShowing()) return;
+
+                                saveButton.setEnabled(true);
+
+                                Toast.makeText(
+                                        requireContext(),
+                                        "Banner upload failed",
+                                        Toast.LENGTH_LONG
+                                ).show();
                             }
-                            dialog.dismiss();
-                            loadMyProfile();
-                            Toast.makeText(requireContext(), "Profile updated", Toast.LENGTH_SHORT).show();
-                        },
-                        error -> {
-                            if (!isAdded()) {
-                                dialog.dismiss();
-                                return;
-                            }
-                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
-                            Toast.makeText(requireContext(), "Unable to update profile", Toast.LENGTH_LONG).show();
+                    );
+
+                } catch (IOException e) {
+                    if (!isAdded() || !dialog.isShowing()) return;
+
+                    saveButton.setEnabled(true);
+                    Toast.makeText(
+                            requireContext(),
+                            e.getMessage(),
+                            Toast.LENGTH_LONG
+                    ).show();
+                }
+            };
+
+            // First save name and bio
+            repository.updateMyProfile(
+                    newName,
+                    newBio,
+
+                    response -> {
+                        if (!isAdded() || !dialog.isShowing()) return;
+
+                        // Skip avatar upload if none was selected
+                        if (avatarToUpload == null) {
+                            uploadBannerStep.run();
+                            return;
                         }
-                );
-            });
+
+                        try {
+                            apiService.uploadAvatar(
+                                    avatarToUpload,
+
+                                    avatarResponse -> {
+                                        if (!isAdded() || !dialog.isShowing()) return;
+
+                                        selectedAvatarUri = null;
+
+                                        // Continue to banner upload
+                                        uploadBannerStep.run();
+                                    },
+
+                                    error -> {
+                                        if (!isAdded() || !dialog.isShowing()) return;
+
+                                        saveButton.setEnabled(true);
+
+                                        Toast.makeText(
+                                                requireContext(),
+                                                "Avatar upload failed",
+                                                Toast.LENGTH_LONG
+                                        ).show();
+                                    }
+                            );
+
+                        } catch (IOException e) {
+                            if (!isAdded() || !dialog.isShowing()) return;
+
+                            saveButton.setEnabled(true);
+
+                            Toast.makeText(
+                                    requireContext(),
+                                    e.getMessage(),
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        }
+                    },
+
+                    error -> {
+                        if (!isAdded() || !dialog.isShowing()) return;
+
+                        saveButton.setEnabled(true);
+
+                        Toast.makeText(
+                                requireContext(),
+                                "Unable to update name and bio",
+                                Toast.LENGTH_LONG
+                        ).show();
+                    }
+            );
         });
 
+        dialog.setOnDismissListener(ignored -> {
+            selectedAvatarUri = null;
+            selectedBannerUri = null;
+            editAvatarPreview = null;
+            editBannerPreview = null;
+        });
         dialog.show();
+
+        // Make the popup fill the screen width
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+
+            dialog.getWindow().setGravity(android.view.Gravity.CENTER);
+            dialog.getWindow().setBackgroundDrawableResource(
+                    android.R.color.transparent
+            );
+        }
     }
 
     private void loadProfileByUsername(String selectedUsername) {
@@ -339,7 +580,41 @@ public class ProfileFragment extends Fragment {
                         String handle = user.optString("username", "");
                         String description = user.optString("bio", "");
                         String createdAt = user.optString("createdAt", "");
+                        // Load this user's avatar
+                        String avatarUrl = user.optString("profileImageUrl", "");
 
+                        if (!avatarUrl.isEmpty() && !avatarUrl.equals("null")) {
+                            String fullUrl = avatarUrl.startsWith("http")
+                                    ? avatarUrl
+                                    : "http://10.0.2.2:3000" + avatarUrl;
+
+                            Glide.with(this)
+                                    .load(fullUrl)
+                                    .transform(new CircleCrop())
+                                    .placeholder(R.drawable.ui_default_avatar)
+                                    .error(R.drawable.ui_default_avatar)
+                                    .into(profileAvatar);
+                        } else {
+                            Glide.with(this).clear(profileAvatar);
+                            profileAvatar.setImageResource(R.drawable.ui_default_avatar);
+                        }
+
+// Load this user's banner
+                        String bannerUrl = user.optString("bannerImageUrl", "");
+
+                        if (!bannerUrl.isEmpty() && !bannerUrl.equals("null")) {
+                            String fullUrl = bannerUrl.startsWith("http")
+                                    ? bannerUrl
+                                    : "http://10.0.2.2:3000" + bannerUrl;
+
+                            Glide.with(this)
+                                    .load(fullUrl)
+                                    .centerCrop()
+                                    .into(profileBanner);
+                        } else {
+                            Glide.with(this).clear(profileBanner);
+                            profileBanner.setImageDrawable(null);
+                        }
                         profileTitle.setText(name);
                         displayName.setText(name);
                         username.setText("@" + handle);

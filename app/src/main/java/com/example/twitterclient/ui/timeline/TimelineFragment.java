@@ -37,6 +37,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import android.widget.ImageView;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.CircleCrop;
+import com.example.twitterclient.repository.ProfileRepository;
+
 
 public class TimelineFragment extends Fragment {
     private Uri selectedImageUri;
@@ -92,7 +97,42 @@ public class TimelineFragment extends Fragment {
             @Nullable Bundle savedInstanceState
     ) {
         super.onViewCreated(view, savedInstanceState);
+        ImageView composerAvatar = view.findViewById(R.id.composer_avatar);
 
+        ProfileRepository profileRepository =
+                new ProfileRepository(requireContext());
+
+        profileRepository.getMyProfile(
+                response -> {
+                    if (!isAdded()) return;
+
+                    JSONObject user = response.optJSONObject("user");
+                    if (user == null) return;
+
+                    String avatarUrl = user.optString("profileImageUrl", "");
+
+                    if (!avatarUrl.isEmpty() && !avatarUrl.equals("null")) {
+                        String fullUrl = avatarUrl.startsWith("http")
+                                ? avatarUrl
+                                : "http://10.0.2.2:3000" + avatarUrl;
+
+                        Glide.with(this)
+                                .load(fullUrl)
+                                .transform(new CircleCrop())
+                                .placeholder(R.drawable.ui_default_avatar)
+                                .error(R.drawable.ui_default_avatar)
+                                .into(composerAvatar);
+                    } else {
+                        Glide.with(this).clear(composerAvatar);
+                        composerAvatar.setImageResource(R.drawable.ui_default_avatar);
+                    }
+                },
+                error -> {
+                    if (!isAdded()) return;
+                    Glide.with(this).clear(composerAvatar);
+                    composerAvatar.setImageResource(R.drawable.ui_default_avatar);
+                }
+        );
         repository = new TweetRepository(requireContext());
         apiService = new ApiService(requireContext());
 

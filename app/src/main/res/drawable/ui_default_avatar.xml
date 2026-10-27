@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- Gray circular background: stays in place -->
+    <path
+        android:fillColor="#CFD9DE"
+        android:pathData="M24,0 A24,24 0,1 1,24 48 A24,24 0,1 1,24 0 Z" />
+
+    <!-- Move the person upward by 3 units -->
+    <group android:translateY="-4">
+
+        <!-- Person's head -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M24,10 A9,9 0,1 1,24 28 A9,9 0,1 1,24 10 Z" />
+
+        <!-- Person's shoulders -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M8,43 C8,33 15,29 24,29 C33,29 40,33 40,43 Z" />
+
+    </group>
+
+</vector>

@@ -9,6 +9,7 @@ public class Tweet {
     private final String username;
     private final String text;
     private final String mediaUrl;
+    private final String profileImageUrl;
     private int likeCount;
     private boolean likedByMe;
 
@@ -25,6 +26,7 @@ public class Tweet {
         this.username = username;
         this.text = text;
         this.mediaUrl = null;
+        this.profileImageUrl = null;
     }
 
     // Builds a tweet straight from the server JSON (timeline, profile, create post)
@@ -36,6 +38,9 @@ public class Tweet {
         this.mediaUrl = json.isNull("mediaUrl")
                 ? null
                 : json.optString("mediaUrl", "");
+        this.profileImageUrl = json.isNull("profileImageUrl")
+                ? null
+                : json.optString("profileImageUrl", "");
         this.likeCount = json.optInt("likeCount", 0);
 
         // The server sends likedByMe as 0/1 in post lists and as true/false
@@ -61,6 +66,9 @@ public class Tweet {
         return text;
     }
     public String getMediaUrl() { return mediaUrl; }
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
     public int getLikeCount() {
         return likeCount;
     }

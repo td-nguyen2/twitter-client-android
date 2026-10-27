@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.twitterclient.R;
 import com.example.twitterclient.model.Tweet;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 
 public class TweetViewHolder extends RecyclerView.ViewHolder {
 
@@ -20,6 +21,7 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     private final TextView username;
     private final TextView content;
     private final ImageView tweetMedia;
+    private final ImageView tweetAvatar;
     private final ImageView replyButton;
     private final ImageView repostButton;
     private final ImageView shareButton;
@@ -36,7 +38,7 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         username = itemView.findViewById(R.id.tweet_username);
         content = itemView.findViewById(R.id.tweet_content);
         tweetMedia = itemView.findViewById(R.id.tweet_media);
-
+        tweetAvatar = itemView.findViewById(R.id.tweet_avatar);
         replyButton = itemView.findViewById(R.id.tweet_reply_button);
         repostButton = itemView.findViewById(R.id.tweet_repost_button);
         shareButton = itemView.findViewById(R.id.tweet_share_button);
@@ -57,6 +59,27 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         displayName.setText(tweet.getDisplayName());
         username.setText("@" + tweet.getUsername());
 
+        String profileImageUrl = tweet.getProfileImageUrl();
+
+        if (profileImageUrl != null
+                && !profileImageUrl.trim().isEmpty()
+                && !profileImageUrl.equals("null")) {
+
+            String fullAvatarUrl = profileImageUrl.startsWith("http")
+                    ? profileImageUrl
+                    : "http://10.0.2.2:3000" + profileImageUrl;
+
+            Glide.with(itemView)
+                    .load(fullAvatarUrl)
+                    .transform(new CircleCrop())
+                    .placeholder(R.drawable.ui_default_avatar)
+                    .error(R.drawable.ui_default_avatar)
+                    .into(tweetAvatar);
+
+        } else {
+            Glide.with(itemView).clear(tweetAvatar);
+            tweetAvatar.setImageResource(R.drawable.ui_default_avatar);
+        }
         // "X reposted" line, shown only when the list sets repostedBy
         String repostedBy = tweet.getRepostedBy();
 
