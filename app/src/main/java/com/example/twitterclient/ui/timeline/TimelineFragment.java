@@ -22,7 +22,6 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.android.volley.Response;
 import com.example.twitterclient.MainActivity;
 import com.example.twitterclient.R;
 import com.example.twitterclient.auth.SessionManager;
@@ -33,9 +32,7 @@ import com.example.twitterclient.repository.TweetRepository;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import android.widget.ImageView;
 import com.bumptech.glide.Glide;
@@ -75,7 +72,6 @@ public class TimelineFragment extends Fragment {
                         }
                     }
             );
-    private final Set<Long> repostRequestsInProgress = new HashSet<>();
 
     @Nullable
     @Override
@@ -147,8 +143,6 @@ public class TimelineFragment extends Fragment {
                 ((MainActivity) requireActivity())
                         .showPostDetail(tweet)
         );
-
-        adapter.setOnRepostClickListener(this::toggleRepost);
 
         recyclerView = view.findViewById(R.id.timeline_recycler_view);
         recyclerView.setLayoutManager(
@@ -363,95 +357,6 @@ public class TimelineFragment extends Fragment {
         } else {
             repository.getTweets(callback);
         }
-    }
-
-    private void toggleRepost(Tweet tweet) {
-        // This project version uses numeric post IDs.
-        long postId = tweet.getId();
-
-        if (repostRequestsInProgress.contains(postId)) {
-            return;
-        }
-
-        SessionManager session = new SessionManager(requireContext());
-
-        if (!session.isLoggedIn()) {
-            showMessage("Please log in to repost.");
-            return;
-        }
-
-        repostRequestsInProgress.add(postId);
-
-        // Ask the server for the current state instead of assuming
-        // the post has not been reposted before.
-        apiService.getRepostStatus(
-                postId,
-                response -> {
-                    if (!isAdded()) {
-                        repostRequestsInProgress.remove(postId);
-                        return;
-                    }
-
-                    boolean alreadyReposted =
-                            response.optBoolean("reposted", false);
-
-                    Response.Listener<JSONObject> success = result -> {
-                        repostRequestsInProgress.remove(postId);
-
-                        if (!isAdded()) {
-                            return;
-                        }
-
-                        showMessage(
-                                alreadyReposted
-                                        ? "Repost undone."
-                                        : "Post reposted."
-                        );
-
-                        loadTweets();
-                    };
-
-                    Response.ErrorListener failure = error -> {
-                        repostRequestsInProgress.remove(postId);
-
-                        if (isAdded()) {
-                            showMessage(
-                                    "Could not update repost. Please try again."
-                            );
-                        }
-                    };
-
-                    if (alreadyReposted) {
-                        apiService.undoRepost(
-                                postId,
-                                success,
-                                failure
-                        );
-                    } else {
-                        apiService.repost(
-                                postId,
-                                success,
-                                failure
-                        );
-                    }
-                },
-                error -> {
-                    repostRequestsInProgress.remove(postId);
-
-                    if (isAdded()) {
-                        int status = error.networkResponse != null
-                                ? error.networkResponse.statusCode : -1;
-
-                        if (status == 401 || status == 403) {
-                            showMessage("Please log in again to repost.");
-                        } else {
-                            showMessage(
-                                    "Could not check repost status. Please try again."
-                            );
-                        }
-                    }
-                }
-        );
     }
 
     private void showMessage(String message) {

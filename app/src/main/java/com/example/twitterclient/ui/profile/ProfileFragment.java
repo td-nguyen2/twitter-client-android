@@ -144,6 +144,9 @@ public class ProfileFragment extends Fragment {
         tweetAdapter.setOnAuthorClickListener(handle -> {
             ((MainActivity) requireActivity()).showUserProfile(handle);
         });
+        tweetAdapter.setOnTweetClickListener(tweet ->
+                ((MainActivity) requireActivity()).showPostDetail(tweet)
+        );
 
         recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         recycler.setAdapter(tweetAdapter);
@@ -281,34 +284,16 @@ public class ProfileFragment extends Fragment {
 
                         for (int i = 0; i < posts.length(); i++) {
                             JSONObject post = posts.getJSONObject(i);
-                            String postUsername = post.optString("username", handle);
-                            String content = post.optString("content", "");
+                            // The server already sends counts, flags and "repostedBy"
+                            Tweet tweet = new Tweet(post);
 
-                            // Tạo đối tượng JSON chuẩn để khởi tạo Tweet mới
-                            JSONObject tweetJson = new JSONObject();
-                            tweetJson.put("id", post.optInt("id", 0));
-                            tweetJson.put("username", postUsername);
-                            tweetJson.put("displayName", post.optString("displayName", postUsername));
-                            if (!post.isNull("profileImageUrl")) {
-                                tweetJson.put("profileImageUrl", post.optString("profileImageUrl", ""));
-                            }
-                            tweetJson.put("text", content);
-                            if (!post.isNull("mediaUrl")) {
-                                tweetJson.put("mediaUrl", post.optString("mediaUrl", ""));
-                            }
-                            tweetJson.put("likeCount", post.optInt("likeCount", 0));
-                            // Server sends 0/1, so pass the raw value through (Tweet reads both forms)
-                            tweetJson.put("likedByMe", post.opt("likedByMe"));
-
-                            Tweet tweet = new Tweet(tweetJson);
-
-                            // The server marks the posts this profile reposted
+                            // Older servers only send isRepost: use this profile's name
                             Object repostFlag = post.opt("isRepost");
                             boolean isRepost = Boolean.TRUE.equals(repostFlag)
                                     || (repostFlag instanceof Number
                                     && ((Number) repostFlag).intValue() != 0);
 
-                            if (isRepost) {
+                            if (isRepost && tweet.getRepostedBy() == null) {
                                 tweet.setRepostedBy(name);
                             }
 

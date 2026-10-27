@@ -31,8 +31,17 @@ public class NotificationAdapter
         void onActorClick(String username);
     }
 
+    public interface OnPostClickListener {
+        void onPostClick(long postId);
+    }
+
     private final List<AppNotification> items = new ArrayList<>();
     private OnActorClickListener actorClickListener;
+    private OnPostClickListener postClickListener;
+
+    public void setOnPostClickListener(OnPostClickListener listener) {
+        postClickListener = listener;
+    }
 
     public void setOnActorClickListener(OnActorClickListener listener) {
         actorClickListener = listener;
@@ -61,9 +70,29 @@ public class NotificationAdapter
         AppNotification item = items.get(position);
 
         String name = item.getActorDisplayName();
-        boolean isLike = AppNotification.TYPE_LIKE.equals(item.getType());
+        String type = item.getType();
 
-        String action = isLike ? " liked your post" : " followed you";
+        String action;
+        String icon;
+        String iconColor;
+
+        if (AppNotification.TYPE_LIKE.equals(type)) {
+            action = " liked your post";
+            icon = "\u2665";
+            iconColor = "#F91880";
+        } else if (AppNotification.TYPE_REPLY.equals(type)) {
+            action = " replied to your post";
+            icon = "\u21A9";
+            iconColor = "#1D9BF0";
+        } else if (AppNotification.TYPE_REPOST.equals(type)) {
+            action = " reposted your post";
+            icon = "\u21BB";
+            iconColor = "#00BA7C";
+        } else {
+            action = " followed you";
+            icon = "+";
+            iconColor = "#1D9BF0";
+        }
 
         // Bold name followed by a normal-weight action
         SpannableStringBuilder text = new SpannableStringBuilder(name + action);
@@ -75,11 +104,9 @@ public class NotificationAdapter
         );
         holder.text.setText(text);
 
-        // Heart for likes, plus sign for follows
-        holder.typeIcon.setText(isLike ? "\u2665" : "+");
-        holder.typeIcon.setTextColor(
-                Color.parseColor(isLike ? "#F91880" : "#1D9BF0")
-        );
+        // Heart for likes, arrows for replies/reposts, plus sign for follows
+        holder.typeIcon.setText(icon);
+        holder.typeIcon.setTextColor(Color.parseColor(iconColor));
 
         String initial = name.isEmpty()
                 ? "?"
@@ -96,8 +123,11 @@ public class NotificationAdapter
 
         holder.time.setText(timeAgo(item.getCreatedAt()));
 
+        // Likes, replies and reposts open the post; follows open the profile
         holder.itemView.setOnClickListener(v -> {
-            if (actorClickListener != null) {
+            if (item.getPostId() > 0 && postClickListener != null) {
+                postClickListener.onPostClick(item.getPostId());
+            } else if (actorClickListener != null) {
                 actorClickListener.onActorClick(item.getActorUsername());
             }
         });

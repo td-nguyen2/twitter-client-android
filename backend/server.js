@@ -186,12 +186,79 @@ async function initSocialTables() {
                 UNIQUE KEY uq_post_reposts (post_id, username)
             )
         `);
-        console.log("Social tables (likes, follows, notifications) verified!");
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS post_replies (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                post_id INT NOT NULL,
+                username VARCHAR(50) NOT NULL,
+                content VARCHAR(280) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_post_replies_post (post_id, created_at)
+            )
+        `);
+        // Reply notifications point at the reply itself so the app can show its text.
+        // Older databases do not have this column yet; ignore "duplicate column".
+        try {
+            await db.execute("ALTER TABLE notifications ADD COLUMN reply_id INT NULL");
+        } catch (alterError) {
+            if (alterError.errno !== 1060) throw alterError;
+        }
+        console.log("Social tables (likes, follows, notifications, reposts, replies) verified!");
     } catch (err) {
         console.error("Failed to init social tables:", err.message);
     }
 }
 initSocialTables();
+
+/*
+ * Shared SELECT used by every list of posts (For you, Following, profile)
+ * and by the single-post endpoint, so all of them return the same fields:
+ * likeCount, replyCount, repostCount, likedByMe, repostedByMe.
+ * `userId` comes from a verified JWT and is forced to a number.
+ */
+function postColumns(userId) {
+    const me = Number(userId) || 0;
+    return `p.id, p.username,
+            COALESCE(u.display_name, p.username) AS displayName,
+            u.profile_image_url AS profileImageUrl,
+            p.content, p.media_url AS mediaUrl, p.created_at AS createdAt,
+            (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
+            (SELECT COUNT(*) FROM post_replies prl WHERE prl.post_id = p.id) AS replyCount,
+            (SELECT COUNT(*) FROM post_reposts prp WHERE prp.post_id = p.id) AS repostCount,
+            ${me ? `EXISTS(SELECT 1 FROM post_likes pl2 WHERE pl2.post_id = p.id AND pl2.user_id = ${me})` : "0"} AS likedByMe,
+            ${me ? `EXISTS(SELECT 1 FROM post_reposts prp2
+                           JOIN users ru2 ON ru2.username = prp2.username
+                           WHERE prp2.post_id = p.id AND ru2.id = ${me})` : "0"} AS repostedByMe`;
+}
+
+/*
+ * A feed = original posts + reposts, newest activity first (like Twitter:
+ * a repost appears at the time it was made, with an "X reposted" line).
+ *   postFilter   - extra WHERE for original posts (uses p / u)
+ *   repostFilter - extra WHERE for repost rows (uses rp / p / u / ru)
+ */
+function feedSql(userId, postFilter, repostFilter) {
+    return `
+        SELECT * FROM (
+            SELECT ${postColumns(userId)},
+                   p.created_at AS sortAt,
+                   NULL AS repostedBy, NULL AS repostedByUsername, 0 AS isRepost
+            FROM posts p
+            LEFT JOIN users u ON u.username = p.username
+            WHERE ${postFilter}
+            UNION ALL
+            SELECT ${postColumns(userId)},
+                   rp.created_at AS sortAt,
+                   COALESCE(ru.display_name, rp.username) AS repostedBy,
+                   rp.username AS repostedByUsername, 1 AS isRepost
+            FROM post_reposts rp
+            JOIN posts p ON p.id = rp.post_id
+            LEFT JOIN users u ON u.username = p.username
+            LEFT JOIN users ru ON ru.username = rp.username
+            WHERE ${repostFilter}
+        ) feed
+        ORDER BY sortAt DESC, id DESC`;
+}
 
 
 // Check server and database
@@ -219,17 +286,8 @@ app.get("/api/posts", async (req, res) => {
     try {
         const currentUserId = await getOptionalUserId(req);
 
-        const [posts] = await db.execute(
-            `SELECT p.id, p.username,
-                    COALESCE(u.display_name, p.username) AS displayName,
-                    u.profile_image_url AS profileImageUrl,
-                    p.content, p.media_url AS mediaUrl, p.created_at,
-                    (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
-                    ${currentUserId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ${Number(currentUserId)})` : "0"} AS likedByMe
-             FROM posts p
-             LEFT JOIN users u ON u.username = p.username
-             ORDER BY p.id DESC`
-        );
+        // Every post plus every repost, newest activity first
+        const [posts] = await db.execute(feedSql(currentUserId, "1 = 1", "1 = 1"));
 
         res.json({ posts });
     } catch (error) {
@@ -260,7 +318,7 @@ app.post(
         // A post needs text, media, or both.
         if ((!text && !req.file) || text.length > 280) {
             if (req.file) {
-                fs.unlink(req.file.path, () => {});
+                fs.unlink(req.file.path, () => { });
             }
 
             return res.status(400).json({
@@ -291,7 +349,7 @@ app.post(
 
         } catch (error) {
             if (req.file) {
-                fs.unlink(req.file.path, () => {});
+                fs.unlink(req.file.path, () => { });
             }
 
             console.error("POST error:", error.message);
@@ -668,22 +726,11 @@ app.get("/api/users/:id/posts", async (req, res) => {
             });
         }
 
-        // Retrieve posts written by this user plus posts this user reposted
+        // Posts written by this user plus posts this user reposted
         const uname = users[0].username;
         const [posts] = await db.execute(
-            `SELECT p.id, p.username,
-                    COALESCE(u.display_name, p.username) AS displayName,
-                    u.profile_image_url AS profileImageUrl,
-                    p.content, p.media_url AS mediaUrl, p.created_at,
-                    (p.username <> ?) AS isRepost,
-                    (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
-                    ${currentUserId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ${Number(currentUserId)})` : "0"} AS likedByMe
-             FROM posts p
-             LEFT JOIN users u ON u.username = p.username
-             WHERE p.username = ?
-                OR p.id IN (SELECT pr.post_id FROM post_reposts pr WHERE pr.username = ?)
-             ORDER BY p.id DESC`,
-            [uname, uname, uname]
+            feedSql(currentUserId, "p.username = ?", "rp.username = ?"),
+            [uname, uname]
         );
 
         return res.json({ posts });
@@ -837,19 +884,11 @@ app.post(
 app.get("/api/posts/following", requireAuth, async (req, res) => {
     try {
         const uid = req.authUser.id;
+        const followed = `(SELECT fu.username FROM follows f
+                           JOIN users fu ON fu.id = f.following_id
+                           WHERE f.follower_id = ${Number(uid)})`;
         const [posts] = await db.execute(
-            `SELECT p.id, p.username,
-                    COALESCE(u.display_name, p.username) AS displayName,
-                    u.profile_image_url AS profileImageUrl,
-                    p.content, p.media_url AS mediaUrl, p.created_at,
-                    (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
-                    EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS likedByMe
-             FROM posts p
-             JOIN users u ON u.username = p.username
-             JOIN follows f ON f.following_id = u.id
-             WHERE f.follower_id = ?
-             ORDER BY p.id DESC`,
-            [uid, uid]
+            feedSql(uid, `p.username IN ${followed}`, `rp.username IN ${followed}`)
         );
         return res.json({ posts });
     } catch (error) {
@@ -988,10 +1027,12 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
         const [notifications] = await db.execute(
             `SELECT n.id, n.type, n.post_id AS postId, n.created_at AS createdAt,
                     u.username AS actorUsername, u.display_name AS actorDisplayName,
-                    p.content AS postSnippet
+                    COALESCE(r.content, p.content) AS postSnippet,
+                    p.content AS originalSnippet
              FROM notifications n
              JOIN users u ON u.id = n.actor_id
              LEFT JOIN posts p ON p.id = n.post_id
+             LEFT JOIN post_replies r ON r.id = n.reply_id
              WHERE n.recipient_id = ?
              ORDER BY n.id DESC
              LIMIT 50`,
@@ -1004,9 +1045,47 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
     }
 });
 
+/* ================= SINGLE POST ================= */
+
+// One post with its counters (used by the Post screen)
+app.get("/api/posts/:id", async (req, res) => {
+    const postId = Number(req.params.id);
+
+    if (!Number.isSafeInteger(postId) || postId <= 0) {
+        return res.status(400).json({ error: "Invalid post ID" });
+    }
+
+    try {
+        const currentUserId = await getOptionalUserId(req);
+
+        const [rows] = await db.execute(
+            `SELECT ${postColumns(currentUserId)}
+             FROM posts p
+             LEFT JOIN users u ON u.username = p.username
+             WHERE p.id = ?`,
+            [postId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        return res.json({ post: rows[0] });
+    } catch (error) {
+        console.error("Get post error:", error.message);
+        return res.status(500).json({ error: "Unable to retrieve post" });
+    }
+});
+
 /* ================= REPLY API ================= */
 
-// Get replies for a post
+const REPLY_COLUMNS = `r.id, r.post_id AS postId, r.username,
+        COALESCE(u.display_name, r.username) AS displayName,
+        u.profile_image_url AS profileImageUrl,
+        r.content, r.media_url AS mediaUrl,
+        r.created_at AS createdAt`;
+
+// Get replies for a post (oldest first, like a conversation)
 app.get("/api/posts/:id/replies", async (req, res) => {
     const postId = Number(req.params.id);
 
@@ -1016,7 +1095,7 @@ app.get("/api/posts/:id/replies", async (req, res) => {
 
     try {
         const [posts] = await db.execute(
-            "SELECT id FROM posts WHERE id = ?",
+            "SELECT id, username FROM posts WHERE id = ?",
             [postId]
         );
 
@@ -1025,76 +1104,129 @@ app.get("/api/posts/:id/replies", async (req, res) => {
         }
 
         const [replies] = await db.execute(
-            `SELECT id, post_id AS postId, username,
-                    content, created_at AS createdAt
-             FROM post_replies
-             WHERE post_id = ?
-             ORDER BY created_at ASC, id ASC`,
+            `SELECT ${REPLY_COLUMNS}
+             FROM post_replies r
+             LEFT JOIN users u ON u.username = r.username
+             WHERE r.post_id = ?
+             ORDER BY r.created_at ASC, r.id ASC`,
             [postId]
         );
 
-        return res.json({ replies });
+        return res.json({
+            replies,
+            replyCount: replies.length,
+            // lets the app print "Replying to @author"
+            postUsername: posts[0].username
+        });
     } catch (error) {
         console.error("Get replies error:", error.message);
         return res.status(500).json({ error: "Unable to retrieve replies" });
     }
 });
 
-// Create a reply
-app.post("/api/posts/:id/replies", requireAuth, async (req, res) => {
-    const postId = Number(req.params.id);
-    const { content } = req.body || {};
+// Create a reply, optionally with an image or GIF
+app.post(
+    "/api/posts/:id/replies",
+    requireAuth,
+    upload.single("media"),
+    async (req, res) => {
+        const postId = Number(req.params.id);
+        const { content } = req.body || {};
 
-    if (!Number.isSafeInteger(postId) || postId <= 0) {
-        return res.status(400).json({ error: "Invalid post ID" });
-    }
+        const text =
+            typeof content === "string" ? content.trim() : "";
 
-    if (
-        typeof content !== "string" ||
-        !content.trim() ||
-        content.trim().length > 280
-    ) {
-        return res.status(400).json({
-            error: "Reply must contain 1-280 characters"
-        });
-    }
+        const mediaUrl = req.file
+            ? `/uploads/${req.file.filename}`
+            : null;
 
-    try {
-        const [posts] = await db.execute(
-            "SELECT id FROM posts WHERE id = ?",
-            [postId]
-        );
-
-        if (posts.length === 0) {
-            return res.status(404).json({ error: "Post not found" });
+        if (!Number.isSafeInteger(postId) || postId <= 0) {
+            return res.status(400).json({ error: "Invalid post ID" });
         }
 
-        const [result] = await db.execute(
-            `INSERT INTO post_replies (post_id, username, content)
-             VALUES (?, ?, ?)`,
-            [postId, req.authUser.username, content.trim()]
-        );
+        if ((!text && !req.file) || text.length > 280) {
+            return res.status(400).json({
+                error: "Reply must contain text or media, with at most 280 characters"
+            });
+        }
 
-        const [rows] = await db.execute(
-            `SELECT id, post_id AS postId, username,
-                    content, created_at AS createdAt
-             FROM post_replies
-             WHERE id = ?`,
-            [result.insertId]
-        );
+        try {
+            const [posts] = await db.execute(
+                "SELECT id, username FROM posts WHERE id = ?",
+                [postId]
+            );
 
-        return res.status(201).json({
-            message: "Reply added",
-            reply: rows[0]
-        });
-    } catch (error) {
-        console.error("Create reply error:", error.message);
-        return res.status(500).json({ error: "Unable to create reply" });
+            if (posts.length === 0) {
+                return res.status(404).json({ error: "Post not found" });
+            }
+
+            const [result] = await db.execute(
+                `INSERT INTO post_replies
+                    (post_id, username, content, media_url)
+                 VALUES (?, ?, ?, ?)`,
+                [postId, req.authUser.username, text, mediaUrl]
+            );
+
+            // Notify the author of the original post.
+            const [authors] = await db.execute(
+                "SELECT id FROM users WHERE username = ?",
+                [posts[0].username]
+            );
+
+            if (
+                authors.length > 0 &&
+                authors[0].id !== req.authUser.id
+            ) {
+                await db.execute(
+                    `INSERT INTO notifications
+                        (recipient_id, actor_id, type, post_id, reply_id)
+                     VALUES (?, ?, 'REPLY', ?, ?)`,
+                    [
+                        authors[0].id,
+                        req.authUser.id,
+                        postId,
+                        result.insertId
+                    ]
+                );
+            }
+
+            const [rows] = await db.execute(
+                `SELECT ${REPLY_COLUMNS}
+                 FROM post_replies r
+                 LEFT JOIN users u ON u.username = r.username
+                 WHERE r.id = ?`,
+                [result.insertId]
+            );
+
+            const [[counts]] = await db.execute(
+                "SELECT COUNT(*) AS replyCount FROM post_replies WHERE post_id = ?",
+                [postId]
+            );
+
+            return res.status(201).json({
+                message: "Reply added",
+                reply: rows[0],
+                replyCount: counts.replyCount
+            });
+        } catch (error) {
+            console.error("Create reply error:", error.message);
+            return res.status(500).json({
+                error: "Unable to create reply"
+            });
+        }
     }
-});
+);
 
 
 /* ================= REPOST API ================= */
+
+async function repostCountOf(postId) {
+    const [[row]] = await db.execute(
+        "SELECT COUNT(*) AS repostCount FROM post_reposts WHERE post_id = ?",
+        [postId]
+    );
+    return row.repostCount;
+}
 
 // Get current user's repost status
 app.get(
@@ -1123,7 +1255,10 @@ app.get(
                 [postId, req.authUser.username]
             );
 
-            return res.json({ reposted: rows.length > 0 });
+            return res.json({
+                reposted: rows.length > 0,
+                repostCount: await repostCountOf(postId)
+            });
         } catch (error) {
             console.error("Repost status error:", error.message);
             return res.status(500).json({
@@ -1146,7 +1281,7 @@ app.post(
 
         try {
             const [posts] = await db.execute(
-                "SELECT id FROM posts WHERE id = ?",
+                "SELECT id, username FROM posts WHERE id = ?",
                 [postId]
             );
 
@@ -1154,16 +1289,32 @@ app.post(
                 return res.status(404).json({ error: "Post not found" });
             }
 
-            await db.execute(
+            const [result] = await db.execute(
                 `INSERT INTO post_reposts (post_id, username)
                  VALUES (?, ?)
                  ON DUPLICATE KEY UPDATE id = id`,
                 [postId, req.authUser.username]
             );
 
+            // Notify the author once per new repost (affectedRows is 0 for a duplicate)
+            if (result.affectedRows === 1) {
+                const [authors] = await db.execute(
+                    "SELECT id FROM users WHERE username = ?",
+                    [posts[0].username]
+                );
+                if (authors.length > 0 && authors[0].id !== req.authUser.id) {
+                    await db.execute(
+                        `INSERT INTO notifications (recipient_id, actor_id, type, post_id)
+                         VALUES (?, ?, 'REPOST', ?)`,
+                        [authors[0].id, req.authUser.id, postId]
+                    );
+                }
+            }
+
             return res.json({
                 message: "Post reposted",
-                reposted: true
+                reposted: true,
+                repostCount: await repostCountOf(postId)
             });
         } catch (error) {
             console.error("Repost error:", error.message);
@@ -1201,7 +1352,8 @@ app.delete(
 
             return res.json({
                 message: "Repost removed",
-                reposted: false
+                reposted: false,
+                repostCount: await repostCountOf(postId)
             });
         } catch (error) {
             console.error("Undo repost error:", error.message);
