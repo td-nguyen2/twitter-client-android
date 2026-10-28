@@ -21,6 +21,7 @@ public class Tweet implements Serializable {
     private int repostCount;
     private int viewCount;
     private boolean repostedByMe;
+    private boolean bookmarkedByMe;
 
     // "X reposted" line above the tweet. Set when this row is a repost.
     private String repostedBy;
@@ -60,6 +61,7 @@ public class Tweet implements Serializable {
         this.replyCount = json.optInt("replyCount", 0);
         this.repostCount = json.optInt("repostCount", 0);
         this.viewCount = json.optInt("viewCount", 0);
+        this.bookmarkedByMe = readFlag(json.opt("bookmarkedByMe"));
 
         // The server sends the flags as 0/1 in lists and as true/false in
         // action responses, so accept both.
@@ -146,6 +148,14 @@ public class Tweet implements Serializable {
         this.viewCount = Math.max(0, viewCount);
     }
 
+    public boolean isBookmarkedByMe() {
+        return bookmarkedByMe;
+    }
+
+    public void setBookmarkedByMe(boolean bookmarkedByMe) {
+        this.bookmarkedByMe = bookmarkedByMe;
+    }
+
     public void setRepostCount(int repostCount) {
         this.repostCount = Math.max(0, repostCount);
     }
@@ -165,6 +175,7 @@ public class Tweet implements Serializable {
         this.replyCount = other.replyCount;
         this.repostCount = other.repostCount;
         this.viewCount = other.viewCount;
+        this.bookmarkedByMe = other.bookmarkedByMe;
         this.repostedByMe = other.repostedByMe;
     }
 

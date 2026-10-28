@@ -32,6 +32,24 @@
             android:textColor="#0F1419"
             android:textSize="20sp"
             android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/detail_more_button"
+            android:layout_width="48dp"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="&#8943;"
+            android:textColor="#536471"
+            android:textSize="24sp"
+            android:contentDescription="More post options"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
     <View
@@ -39,11 +57,15 @@
         android:layout_height="1dp"
         android:background="#EFF3F4" />
 
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
     <ScrollView
         android:id="@+id/detail_scroll"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="match_parent"
         android:fillViewport="true">
 
         <LinearLayout
@@ -254,6 +276,25 @@
                 </FrameLayout>
 
                 <FrameLayout
+                    android:id="@+id/detail_bookmark_container"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Bookmark"
+                    android:background="?attr/selectableItemBackground">
+
+                    <ImageView
+                        android:id="@+id/detail_bookmark_icon"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ui_icon_bookmark"
+                        android:importantForAccessibility="no" />
+                </FrameLayout>
+
+                <FrameLayout
                     android:id="@+id/detail_share_container"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
@@ -289,6 +330,63 @@
                 android:visibility="gone" />
 
             <LinearLayout
+                android:id="@+id/detail_replies_loading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="24dp"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:indeterminateTint="#1D9BF0" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Loading replies…"
+                    android:textColor="#536471"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/detail_replies_error"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="24dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/detail_replies_error_message"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="Couldn’t load replies. Check your connection and try again."
+                    android:textColor="#536471"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/detail_replies_retry"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:paddingStart="18dp"
+                    android:paddingEnd="18dp"
+                    android:text="Try again"
+                    android:textColor="#1D9BF0"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/replies_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -296,6 +394,51 @@
 
         </LinearLayout>
     </ScrollView>
+
+        <LinearLayout
+            android:id="@+id/detail_post_state"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:background="#FFFFFF"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/detail_post_loading"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:indeterminateTint="#1D9BF0" />
+
+            <TextView
+                android:id="@+id/detail_post_state_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:text="Loading post…"
+                android:textColor="#536471"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/detail_post_retry"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="Try again"
+                android:textColor="#1D9BF0"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+        </LinearLayout>
+
+    </FrameLayout>
 
     <View
         android:layout_width="match_parent"

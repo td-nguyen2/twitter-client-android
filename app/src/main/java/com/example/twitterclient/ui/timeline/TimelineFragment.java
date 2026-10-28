@@ -57,6 +57,11 @@ public class TimelineFragment extends Fragment {
     private View indicatorForYou;
     private View indicatorFollowing;
     private TextView emptyMessage;
+    private View loadingState;
+    private View errorState;
+    private TextView errorMessage;
+    private int loadGeneration = 0;
+    private boolean firstResume = true;
 
     private final ActivityResultLauncher<String> imagePicker =
             registerForActivityResult(
@@ -262,6 +267,10 @@ public class TimelineFragment extends Fragment {
         indicatorForYou = view.findViewById(R.id.indicator_for_you);
         indicatorFollowing = view.findViewById(R.id.indicator_following);
         emptyMessage = view.findViewById(R.id.timeline_empty_message);
+        loadingState = view.findViewById(R.id.timeline_loading_state);
+        errorState = view.findViewById(R.id.timeline_error_state);
+        errorMessage = view.findViewById(R.id.timeline_error_message);
+        view.findViewById(R.id.timeline_retry_button).setOnClickListener(v -> loadTweets());
 
         view.findViewById(R.id.tab_for_you)
                 .setOnClickListener(v -> selectTab(false));
@@ -297,6 +306,16 @@ public class TimelineFragment extends Fragment {
         loadTweets();
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (firstResume) {
+            firstResume = false;
+        } else if (recyclerView != null) {
+            loadTweets();
+        }
+    }
+
     private void updateTabStyles() {
         if (tabForYouText == null || tabFollowingText == null) {
             return;
@@ -325,9 +344,26 @@ public class TimelineFragment extends Fragment {
         emptyMessage.setVisibility(empty ? View.VISIBLE : View.GONE);
     }
 
+    private void showTimelineLoading() {
+        loadingState.setVisibility(View.VISIBLE);
+        errorState.setVisibility(View.GONE);
+        emptyMessage.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.GONE);
+    }
+
+    private void showTimelineError() {
+        loadingState.setVisibility(View.GONE);
+        emptyMessage.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.GONE);
+        errorMessage.setText("Couldn’t load posts. Check your connection and try again.");
+        errorState.setVisibility(View.VISIBLE);
+    }
+
     // Loads the tab that is currently selected
     private void loadTweets() {
         final boolean following = showingFollowing;
+        final int generation = ++loadGeneration;
+        showTimelineLoading();
 
         TweetRepository.Callback<List<Tweet>> callback =
                 new TweetRepository.Callback<List<Tweet>>() {
@@ -336,18 +372,24 @@ public class TimelineFragment extends Fragment {
                         // Ignore answers for a tab the user has already left
                         if (!isAdded()
                                 || recyclerView == null
+                                || generation != loadGeneration
                                 || following != showingFollowing) {
                             return;
                         }
 
+                        loadingState.setVisibility(View.GONE);
+                        errorState.setVisibility(View.GONE);
                         adapter.replaceTweets(tweets);
+                        recyclerView.setVisibility(tweets.isEmpty() ? View.GONE : View.VISIBLE);
                         updateEmptyMessage(tweets.isEmpty());
                     }
 
                     @Override
                     public void onError(String message) {
-                        if (following == showingFollowing) {
-                            showMessage(message);
+                        if (isAdded()
+                                && generation == loadGeneration
+                                && following == showingFollowing) {
+                            showTimelineError();
                         }
                     }
                 };
@@ -377,6 +419,10 @@ public class TimelineFragment extends Fragment {
         indicatorForYou = null;
         indicatorFollowing = null;
         emptyMessage = null;
+        loadingState = null;
+        errorState = null;
+        errorMessage = null;
+        loadGeneration++;
         super.onDestroyView();
     }
 }

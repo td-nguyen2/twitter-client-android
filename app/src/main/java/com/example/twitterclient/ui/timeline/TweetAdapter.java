@@ -38,6 +38,8 @@ public class TweetAdapter extends RecyclerView.Adapter<TweetViewHolder> {
 
     private OnAuthorClickListener authorClickListener;
     private OnTweetClickListener tweetClickListener;
+    private boolean removeUnbookmarked;
+    private Runnable bookmarksChangedListener;
 
     public void setOnAuthorClickListener(OnAuthorClickListener listener) {
         authorClickListener = listener;
@@ -45,6 +47,14 @@ public class TweetAdapter extends RecyclerView.Adapter<TweetViewHolder> {
 
     public void setOnTweetClickListener(OnTweetClickListener listener) {
         tweetClickListener = listener;
+    }
+
+    public void setRemoveUnbookmarked(boolean removeUnbookmarked) {
+        this.removeUnbookmarked = removeUnbookmarked;
+    }
+
+    public void setOnBookmarksChangedListener(Runnable listener) {
+        bookmarksChangedListener = listener;
     }
 
     @NonNull
@@ -106,6 +116,22 @@ public class TweetAdapter extends RecyclerView.Adapter<TweetViewHolder> {
         );
 
         holder.setOnShareClickListener(v -> TweetActions.share(context, tweet));
+        holder.setOnMoreClickListener(v ->
+                TweetActions.showBookmarkMenu(
+                        context,
+                        v,
+                        tweet,
+                        this::onTweetStatsChanged
+                )
+        );
+        holder.setOnBookmarkClickListener(v ->
+                TweetActions.setBookmarked(
+                        context,
+                        tweet,
+                        !tweet.isBookmarkedByMe(),
+                        this::onTweetStatsChanged
+                )
+        );
     }
 
     @Override
@@ -126,6 +152,19 @@ public class TweetAdapter extends RecyclerView.Adapter<TweetViewHolder> {
      * so copy the new numbers to every row of that post and redraw them.
      */
     private void onTweetStatsChanged(Tweet changed) {
+        if (removeUnbookmarked && !changed.isBookmarkedByMe()) {
+            for (int i = tweets.size() - 1; i >= 0; i--) {
+                if (tweets.get(i).getId() == changed.getId()) {
+                    tweets.remove(i);
+                    notifyItemRemoved(i);
+                }
+            }
+            if (bookmarksChangedListener != null) {
+                bookmarksChangedListener.run();
+            }
+            return;
+        }
+
         for (int i = 0; i < tweets.size(); i++) {
             Tweet row = tweets.get(i);
 

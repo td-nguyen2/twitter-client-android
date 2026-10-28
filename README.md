@@ -12,6 +12,7 @@ A Twitter-like mobile application built as a USTH group project. The Android cli
 - Local session persistence using `SharedPreferences`.
 - Timeline populated from MySQL via `GET /api/posts`, newest first.
 - Tweet views counted once per signed-in account and shown on feed rows and the post detail screen.
+- Save other users' posts to a personal Bookmarks list, stored in MySQL.
 - Compose and publish text-only, image-only, and image/GIF tweets (maximum 280 characters of text).
 - Store uploaded files locally in backend/uploads/ using Multer.
 - Display uploaded images and animated GIFs in the timeline using Glide.
@@ -168,14 +169,19 @@ The Android emulator reaches a server on the host PC at **`http://10.0.2.2:3000`
 
 ## REST API
 
-| Method | Route                 | Authentication | Purpose                                  |
-| ------ | --------------------- | -------------- | ---------------------------------------- |
-| `GET`  | `/api/health`         | No             | Check API and DB availability            |
-| `POST` | `/api/auth/register`  | No             | Create a user and hash their password    |
-| `POST` | `/api/auth/login`     | No             | Verify credentials, issue JWT            |
-| `GET`  | `/api/posts`          | No             | List posts, newest first                 |
-| `POST` | `/api/posts`          | **Bearer JWT** | Create a tweet as the authenticated user |
-| `POST` | `/api/posts/:id/view` | **Bearer JWT** | Count one view per account and post      |
+## REST API
+
+| Method   | Route                     | Authentication | Purpose                                  |
+| -------- | ------------------------- | -------------- | ---------------------------------------- |
+| `GET`    | `/api/health`             | No             | Check API and DB availability            |
+| `POST`   | `/api/auth/register`      | No             | Create a user and hash their password    |
+| `POST`   | `/api/auth/login`         | No             | Verify credentials, issue JWT            |
+| `GET`    | `/api/posts`              | No             | List posts, newest first                 |
+| `POST`   | `/api/posts`              | **Bearer JWT** | Create a tweet as the authenticated user |
+| `POST`   | `/api/posts/:id/view`     | **Bearer JWT** | Count one view per account and post      |
+| `GET`    | `/api/bookmarks`          | **Bearer JWT** | List the signed-in user's saved posts    |
+| `POST`   | `/api/posts/:id/bookmark` | **Bearer JWT** | Save a post to Bookmarks                 |
+| `DELETE` | `/api/posts/:id/bookmark` | **Bearer JWT** | Remove a post from Bookmarks             |
 
 ### Registration
 
