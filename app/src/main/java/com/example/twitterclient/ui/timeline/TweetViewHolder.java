@@ -165,13 +165,14 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         tvLikeCount.setTextColor(color);
     }
 
-    /** Redraws only the counters and the like/repost colours (no image reload). */
+       /** Redraws only the counters and the like/repost colours (no image reload). */
     public void updateStats(Tweet tweet) {
         tvLikeCount.setText(countText(tweet.getLikeCount()));
         updateLikeUI(tweet.isLikedByMe());
         updateReplyUI(tweet.getReplyCount());
         updateRepostUI(tweet.isRepostedByMe(), tweet.getRepostCount());
-        tvViewCount.setText(TimeUtils.compactCount(tweet.getViewCount()));
+
+        tvViewCount.setText(countText(tweet.getViewCount()));
         bookmarkIcon.setImageResource(
                 tweet.isBookmarkedByMe()
                         ? R.drawable.ui_icon_bookmark_filled

@@ -400,10 +400,13 @@ public class PostDetailFragment extends Fragment {
 
         int views = tweet.getViewCount();
         setStat(statViews, views, views == 1 ? "View" : "Views");
+
         if (views == 0) {
             statViews.setText("0 Views");
             statViews.setVisibility(View.VISIBLE);
         }
+
+        boolean anyStat = reposts > 0 || replies > 0 || likes > 0 || views > 0;
 
         statsRow.setVisibility(View.VISIBLE);
         statsDivider.setVisibility(View.VISIBLE);
@@ -451,6 +454,7 @@ public class PostDetailFragment extends Fragment {
                 error -> { /* Keep the last known count if view tracking is unavailable. */ }
         );
     }
+
 
     // "12 Likes" with the number in bold dark text, hidden at zero
     private void setStat(TextView target, int count, String label) {

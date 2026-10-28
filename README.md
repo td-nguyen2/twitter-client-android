@@ -169,6 +169,8 @@ The Android emulator reaches a server on the host PC at **`http://10.0.2.2:3000`
 
 ## REST API
 
+## REST API
+
 | Method   | Route                     | Authentication | Purpose                                  |
 | -------- | ------------------------- | -------------- | ---------------------------------------- |
 | `GET`    | `/api/health`             | No             | Check API and DB availability            |

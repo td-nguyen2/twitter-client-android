@@ -85,9 +85,19 @@ public class ProfileRepository {
             Response.Listener<JSONObject> success,
             Response.ErrorListener failure
     ) {
+        getUserPosts(userId, "posts", success, failure);
+    }
+
+    // tab = "posts", "replies", "reposts" or "media"
+    public void getUserPosts(
+            int userId,
+            String tab,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure
+    ) {
         JsonObjectRequest request = new JsonObjectRequest(
                 Request.Method.GET,
-                BASE_URL + "/api/users/" + userId + "/posts",
+                BASE_URL + "/api/users/" + userId + "/posts?tab=" + tab,
                 null,
                 success,
                 failure

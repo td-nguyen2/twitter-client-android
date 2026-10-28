@@ -189,6 +189,7 @@ public class ApiService {
                 return getAuthHeaders();
             }
         };
+
         queue.add(request);
     }
 
@@ -211,6 +212,7 @@ public class ApiService {
             long postId,
             Response.Listener<JSONObject> success,
             Response.ErrorListener failure) {
+
         JsonObjectRequest request = new JsonObjectRequest(
                 method,
                 BASE_URL + "/api/posts/" + postId + "/bookmark",
@@ -223,9 +225,9 @@ public class ApiService {
                 return getAuthHeaders();
             }
         };
+
         queue.add(request);
     }
-
     // Get replies for a post
     public void getReplies(
             long postId,
