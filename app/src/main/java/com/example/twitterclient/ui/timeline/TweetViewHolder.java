@@ -31,6 +31,7 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     private final ImageView ivRepostIcon;
     private final TextView tvReplyCount;
     private final TextView tvRepostCount;
+    private final TextView tvViewCount;
     private final ImageView shareButton;
     private final LinearLayout btnLikeContainer;
     private final ImageView ivLikeIcon;
@@ -52,6 +53,7 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         ivRepostIcon = itemView.findViewById(R.id.iv_repost_icon);
         tvReplyCount = itemView.findViewById(R.id.tv_reply_count);
         tvRepostCount = itemView.findViewById(R.id.tv_repost_count);
+        tvViewCount = itemView.findViewById(R.id.tv_view_count);
         shareButton = itemView.findViewById(R.id.tweet_share_button);
 
         btnLikeContainer = itemView.findViewById(R.id.btn_like_container);
@@ -163,6 +165,7 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         updateLikeUI(tweet.isLikedByMe());
         updateReplyUI(tweet.getReplyCount());
         updateRepostUI(tweet.isRepostedByMe(), tweet.getRepostCount());
+        tvViewCount.setText(countText(tweet.getViewCount()));
     }
 
     // A zero count is hidden, like on Twitter

@@ -11,6 +11,7 @@ A Twitter-like mobile application built as a USTH group project. The Android cli
 - Android login and registration screens using Fragments.
 - Local session persistence using `SharedPreferences`.
 - Timeline populated from MySQL via `GET /api/posts`, newest first.
+- Tweet views counted once per signed-in account and shown on feed rows and the post detail screen.
 - Compose and publish text-only, image-only, and image/GIF tweets (maximum 280 characters of text).
 - Store uploaded files locally in backend/uploads/ using Multer.
 - Display uploaded images and animated GIFs in the timeline using Glide.
@@ -23,18 +24,18 @@ A Twitter-like mobile application built as a USTH group project. The Android cli
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
-| Android | Java, XML, AndroidX Fragments, RecyclerView |
-| HTTP client | Volley |
-| Image and GIF loading | Glide 4.16.0 |
-| Backend | Node.js, Express (CommonJS) |
-| File uploading | Multer (`multipart/form-data`) |
-| Media storage | Local `backend/uploads/` directory |
-| Database | MySQL 8.x, `mysql2/promise` |
-| Authentication | `bcrypt`, `jsonwebtoken` (JWT) |
-| Configuration | `dotenv` (`backend/.env`, not committed) |
-| Tooling | Android Studio, Gradle, npm, Git |
+| Layer                 | Technology                                  |
+| --------------------- | ------------------------------------------- |
+| Android               | Java, XML, AndroidX Fragments, RecyclerView |
+| HTTP client           | Volley                                      |
+| Image and GIF loading | Glide 4.16.0                                |
+| Backend               | Node.js, Express (CommonJS)                 |
+| File uploading        | Multer (`multipart/form-data`)              |
+| Media storage         | Local `backend/uploads/` directory          |
+| Database              | MySQL 8.x, `mysql2/promise`                 |
+| Authentication        | `bcrypt`, `jsonwebtoken` (JWT)              |
+| Configuration         | `dotenv` (`backend/.env`, not committed)    |
+| Tooling               | Android Studio, Gradle, npm, Git            |
 
 ## Repository layout
 
@@ -167,13 +168,14 @@ The Android emulator reaches a server on the host PC at **`http://10.0.2.2:3000`
 
 ## REST API
 
-| Method | Route | Authentication | Purpose |
-|---|---|---|---|
-| `GET` | `/api/health` | No | Check API and DB availability |
-| `POST` | `/api/auth/register` | No | Create a user and hash their password |
-| `POST` | `/api/auth/login` | No | Verify credentials, issue JWT |
-| `GET` | `/api/posts` | No | List posts, newest first |
-| `POST` | `/api/posts` | **Bearer JWT** | Create a tweet as the authenticated user |
+| Method | Route                 | Authentication | Purpose                                  |
+| ------ | --------------------- | -------------- | ---------------------------------------- |
+| `GET`  | `/api/health`         | No             | Check API and DB availability            |
+| `POST` | `/api/auth/register`  | No             | Create a user and hash their password    |
+| `POST` | `/api/auth/login`     | No             | Verify credentials, issue JWT            |
+| `GET`  | `/api/posts`          | No             | List posts, newest first                 |
+| `POST` | `/api/posts`          | **Bearer JWT** | Create a tweet as the authenticated user |
+| `POST` | `/api/posts/:id/view` | **Bearer JWT** | Count one view per account and post      |
 
 ### Registration
 

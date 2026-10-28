@@ -19,6 +19,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDialog;
 
+import com.bumptech.glide.Glide;
 import com.android.volley.VolleyError;
 import com.example.twitterclient.R;
 import com.example.twitterclient.auth.SessionManager;
@@ -217,6 +218,7 @@ public final class TweetActions {
         TextView counter = dialog.findViewById(R.id.reply_dialog_counter);
         EditText input = dialog.findViewById(R.id.reply_dialog_input);
         ImageView originalAvatar = dialog.findViewById(R.id.reply_original_avatar);
+        ImageView originalMedia = dialog.findViewById(R.id.reply_original_media);
         ImageView myAvatar = dialog.findViewById(R.id.reply_my_avatar);
         TextView originalName = dialog.findViewById(R.id.reply_original_name);
         TextView originalUsername = dialog.findViewById(R.id.reply_original_username);
@@ -224,7 +226,7 @@ public final class TweetActions {
         TextView replyingTo = dialog.findViewById(R.id.reply_replying_to);
 
         if (cancel == null || send == null || counter == null || input == null
-                || originalAvatar == null || myAvatar == null || originalName == null
+                || originalAvatar == null || originalMedia == null || myAvatar == null || originalName == null
                 || originalUsername == null || originalText == null || replyingTo == null) {
             return;
         }
@@ -243,6 +245,18 @@ public final class TweetActions {
             originalText.setVisibility(View.GONE);
         } else {
             originalText.setText(originalContent);
+            originalText.setVisibility(View.VISIBLE);
+        }
+
+        String originalMediaUrl = tweet.getMediaUrl();
+        if (originalMediaUrl == null || originalMediaUrl.trim().isEmpty()) {
+            Glide.with(originalMedia).clear(originalMedia);
+            originalMedia.setVisibility(View.GONE);
+        } else {
+            originalMedia.setVisibility(View.VISIBLE);
+            Glide.with(originalMedia)
+                    .load(ImageUtils.fullUrl(originalMediaUrl))
+                    .into(originalMedia);
         }
         replyingTo.setText(UiText.replyingTo(tweet.getUsername()));
 

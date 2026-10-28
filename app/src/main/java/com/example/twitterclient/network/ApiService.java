@@ -151,6 +151,28 @@ public class ApiService {
         queue.add(request);
     }
 
+    // Record one view per signed-in account and post.
+    public void recordPostView(
+            long postId,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure) {
+
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.POST,
+                BASE_URL + "/api/posts/" + postId + "/view",
+                new JSONObject(),
+                success,
+                failure
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                return getAuthHeaders();
+            }
+        };
+
+        queue.add(request);
+    }
+
     // Get replies for a post
     public void getReplies(
             long postId,

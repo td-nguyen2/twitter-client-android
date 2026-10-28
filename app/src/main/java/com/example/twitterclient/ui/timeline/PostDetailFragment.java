@@ -61,6 +61,7 @@ public class PostDetailFragment extends Fragment {
 
     private ApiService apiService;
     private Tweet tweet;
+    private Tweet originatingTweet;
 
     private ScrollView scroll;
     private LinearLayout repliesContainer;
@@ -87,6 +88,7 @@ public class PostDetailFragment extends Fragment {
     private TextView statReposts;
     private TextView statReplies;
     private TextView statLikes;
+    private TextView statViews;
     private ImageView repostIcon;
     private ImageView likeIcon;
     private TextView replyingToLabel;
@@ -163,6 +165,7 @@ public class PostDetailFragment extends Fragment {
 
         if (passed instanceof Tweet) {
             tweet = (Tweet) passed;
+            originatingTweet = tweet;
         } else if (idOnly > 0) {
             // Placeholder: hidden until the server answers
             tweet = new Tweet(idOnly, "", "", "");
@@ -188,6 +191,7 @@ public class PostDetailFragment extends Fragment {
         statReposts = view.findViewById(R.id.detail_stat_reposts);
         statReplies = view.findViewById(R.id.detail_stat_replies);
         statLikes = view.findViewById(R.id.detail_stat_likes);
+        statViews = view.findViewById(R.id.detail_stat_views);
 
         repostIcon = view.findViewById(R.id.detail_repost_icon);
         likeIcon = view.findViewById(R.id.detail_like_icon);
@@ -278,6 +282,7 @@ public class PostDetailFragment extends Fragment {
         }
 
         bindTweet();
+        recordPostView();
         refreshTweet(waitForServer);
 
         // With only an id we need the author first ("Replying to @author")
@@ -346,7 +351,10 @@ public class PostDetailFragment extends Fragment {
                 likes == 1 ? "Like" : "Likes"
         );
 
-        boolean anyStat = reposts > 0 || replies > 0 || likes > 0;
+        int views = tweet.getViewCount();
+        setStat(statViews, views, views == 1 ? "View" : "Views");
+
+        boolean anyStat = reposts > 0 || replies > 0 || likes > 0 || views > 0;
 
         statsRow.setVisibility(anyStat ? View.VISIBLE : View.GONE);
         statsDivider.setVisibility(anyStat ? View.VISIBLE : View.GONE);
@@ -362,6 +370,28 @@ public class PostDetailFragment extends Fragment {
                         tweet.isLikedByMe() ? "#F91880" : "#536471"
                 )
         ));
+    }
+
+    private void recordPostView() {
+        if (tweet == null || tweet.getId() <= 0) {
+            return;
+        }
+
+        apiService.recordPostView(
+                tweet.getId(),
+                response -> {
+                    if (!isAdded() || tweet == null) {
+                        return;
+                    }
+
+                    tweet.setViewCount(response.optInt("viewCount", tweet.getViewCount()));
+                    if (originatingTweet != null) {
+                        originatingTweet.setViewCount(tweet.getViewCount());
+                    }
+                    bindStats();
+                },
+                error -> { /* Keep the last known count if view tracking is unavailable. */ }
+        );
     }
 
     // "12 Likes" with the number in bold dark text, hidden at zero
@@ -415,6 +445,9 @@ public class PostDetailFragment extends Fragment {
 
                     try {
                         tweet = new Tweet(post);
+                        if (originatingTweet != null) {
+                            originatingTweet.copyStatsFrom(tweet);
+                        }
                         bindTweet();
 
                         replyingToLabel.setText(

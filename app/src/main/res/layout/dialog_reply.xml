@@ -135,6 +135,17 @@
                         android:textColor="#0F1419"
                         android:textSize="15sp" />
 
+                    <ImageView
+                        android:id="@+id/reply_original_media"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:adjustViewBounds="true"
+                        android:maxHeight="240dp"
+                        android:scaleType="centerCrop"
+                        android:contentDescription="Tweet image"
+                        android:visibility="gone" />
+
                     <TextView
                         android:id="@+id/reply_replying_to"
                         android:layout_width="wrap_content"
