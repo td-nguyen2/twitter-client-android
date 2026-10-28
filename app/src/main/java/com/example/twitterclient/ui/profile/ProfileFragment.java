@@ -60,6 +60,14 @@ public class ProfileFragment extends Fragment {
     private TextView bio;
     private TextView joinedDate;
     private TextView emptyMessage;
+
+    // Profile tabs: "posts", "replies", "reposts", "media"
+    private String currentTab = "posts";
+    private int profileUserId = -1;
+    private String profileName = "";
+    private String profileHandle = "";
+    private TextView tabPosts, tabReplies, tabReposts, tabMedia;
+    private View indicatorPosts, indicatorReplies, indicatorReposts, indicatorMedia;
     private Uri selectedAvatarUri;
     private Uri selectedBannerUri;
 
@@ -137,6 +145,19 @@ public class ProfileFragment extends Fragment {
         emptyMessage = view.findViewById(R.id.textProfileEmpty);
         profileAvatar = view.findViewById(R.id.imageProfileAvatar);
         profileBanner = view.findViewById(R.id.imageProfileBanner);
+
+        tabPosts = view.findViewById(R.id.tabPosts);
+        tabReplies = view.findViewById(R.id.tabReplies);
+        tabReposts = view.findViewById(R.id.tabReposts);
+        tabMedia = view.findViewById(R.id.tabMedia);
+        indicatorPosts = view.findViewById(R.id.indicatorPosts);
+        indicatorReplies = view.findViewById(R.id.indicatorReplies);
+        indicatorReposts = view.findViewById(R.id.indicatorReposts);
+        indicatorMedia = view.findViewById(R.id.indicatorMedia);
+        tabPosts.setOnClickListener(v -> selectTab("posts"));
+        tabReplies.setOnClickListener(v -> selectTab("replies"));
+        tabReposts.setOnClickListener(v -> selectTab("reposts"));
+        tabMedia.setOnClickListener(v -> selectTab("media"));
         // Reuse the existing timeline TweetAdapter.
         RecyclerView recycler = view.findViewById(R.id.recyclerProfilePosts);
 
@@ -272,11 +293,56 @@ public class ProfileFragment extends Fragment {
         );
     }
 
+    // Switch the profile tab and reload the list under it
+    private void selectTab(String tab) {
+        if (tab.equals(currentTab)) return;
+        currentTab = tab;
+        updateTabStyles();
+        tweetAdapter.replaceTweets(new ArrayList<>());
+        emptyMessage.setVisibility(View.GONE);
+        if (profileUserId > 0) {
+            loadUserPosts(profileUserId, profileName, profileHandle);
+        }
+    }
+
+    private void updateTabStyles() {
+        styleTab(tabPosts, indicatorPosts, "posts".equals(currentTab));
+        styleTab(tabReplies, indicatorReplies, "replies".equals(currentTab));
+        styleTab(tabReposts, indicatorReposts, "reposts".equals(currentTab));
+        styleTab(tabMedia, indicatorMedia, "media".equals(currentTab));
+    }
+
+    private void styleTab(TextView tab, View indicator, boolean selected) {
+        if (tab == null || indicator == null) return;
+        tab.setTextColor(android.graphics.Color.parseColor(selected ? "#0F1419" : "#536471"));
+        tab.setTypeface(null, selected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+        indicator.setBackgroundColor(selected
+                ? android.graphics.Color.parseColor("#1D9BF0")
+                : android.graphics.Color.TRANSPARENT);
+    }
+
+    private String emptyTextForTab() {
+        switch (currentTab) {
+            case "replies": return "No replies yet";
+            case "reposts": return "No reposts yet";
+            case "media": return "No photos or GIFs yet";
+            default: return "No posts yet";
+        }
+    }
+
     private void loadUserPosts(int userId, String name, String handle) {
+        profileUserId = userId;
+        profileName = name;
+        profileHandle = handle;
+        final String requestedTab = currentTab;
+
         repository.getUserPosts(
                 userId,
+                requestedTab,
                 response -> {
                     if (!isAdded()) return;
+                    // Ignore a slow answer for a tab the user already left
+                    if (!requestedTab.equals(currentTab)) return;
 
                     try {
                         JSONArray posts = response.getJSONArray("posts");
@@ -302,8 +368,11 @@ public class ProfileFragment extends Fragment {
 
                         tweetAdapter.replaceTweets(tweets);
 
-                        int count = tweets.size();
-                        postCount.setText(count + (count == 1 ? " post" : " posts"));
+                        if ("posts".equals(requestedTab)) {
+                            int count = tweets.size();
+                            postCount.setText(count + (count == 1 ? " post" : " posts"));
+                        }
+                        emptyMessage.setText(emptyTextForTab());
                         emptyMessage.setVisibility(tweets.isEmpty() ? View.VISIBLE : View.GONE);
 
                     } catch (Exception error) {

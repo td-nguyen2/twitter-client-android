@@ -213,12 +213,12 @@
                     android:textColor="#536471"/>
 
                 <TextView
-                    android:id="@+id/tabHighlights"
+                    android:id="@+id/tabReposts"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="Highlights"
+                    android:text="Reposts"
                     android:textColor="#536471"/>
 
                 <TextView
@@ -231,12 +231,45 @@
                     android:textColor="#536471"/>
             </LinearLayout>
 
-            <!-- Selected tab indicator -->
-            <View
-                android:layout_width="72dp"
+            <!-- Selected tab indicator (one segment under each tab) -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="4dp"
-                android:layout_marginStart="12dp"
-                android:background="#1D9BF0"/>
+                android:orientation="horizontal">
+
+                <View
+                    android:id="@+id/indicatorPosts"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="#1D9BF0"/>
+
+                <View
+                    android:id="@+id/indicatorReplies"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"/>
+
+                <View
+                    android:id="@+id/indicatorReposts"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"/>
+
+                <View
+                    android:id="@+id/indicatorMedia"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"/>
+            </LinearLayout>
 
             <View
                 android:layout_width="match_parent"

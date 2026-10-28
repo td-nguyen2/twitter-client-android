@@ -736,12 +736,50 @@ app.get("/api/users/:id/posts", async (req, res) => {
             });
         }
 
-        // Posts written by this user plus posts this user reposted
         const uname = users[0].username;
-        const [posts] = await db.execute(
-            feedSql(currentUserId, "p.username = ?", "rp.username = ?"),
-            [uname, uname]
-        );
+        const tab = String(req.query.tab || "posts");
+        let posts;
+
+        if (tab === "replies") {
+            // Replies written by this user. `id` is the post being replied to,
+            // so tapping a row opens that conversation.
+            [posts] = await db.execute(
+                `SELECT r.post_id AS id, r.username,
+                        COALESCE(u.display_name, r.username) AS displayName,
+                        u.profile_image_url AS profileImageUrl,
+                        r.content, r.media_url AS mediaUrl, r.created_at AS createdAt,
+                        0 AS likeCount, 0 AS replyCount, 0 AS repostCount, 0 AS viewCount,
+                        0 AS likedByMe, 0 AS repostedByMe,
+                        NULL AS repostedBy, NULL AS repostedByUsername, 0 AS isRepost
+                 FROM post_replies r
+                 LEFT JOIN users u ON u.username = r.username
+                 WHERE r.username = ?
+                 ORDER BY r.created_at DESC, r.id DESC`,
+                [uname]
+            );
+        } else if (tab === "reposts") {
+            // Only the posts this user reposted
+            [posts] = await db.execute(
+                feedSql(currentUserId, "1 = 0", "rp.username = ?"),
+                [uname]
+            );
+        } else if (tab === "media") {
+            // Only this user's own posts that have an image / GIF
+            [posts] = await db.execute(
+                feedSql(
+                    currentUserId,
+                    "p.username = ? AND p.media_url IS NOT NULL AND p.media_url <> ''",
+                    "1 = 0"
+                ),
+                [uname]
+            );
+        } else {
+            // Posts: written by this user plus posts this user reposted
+            [posts] = await db.execute(
+                feedSql(currentUserId, "p.username = ?", "rp.username = ?"),
+                [uname, uname]
+            );
+        }
 
         return res.json({ posts });
 
