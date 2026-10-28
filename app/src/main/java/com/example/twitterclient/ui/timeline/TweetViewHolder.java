@@ -31,12 +31,16 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
     private final ImageView ivRepostIcon;
     private final TextView tvReplyCount;
     private final TextView tvRepostCount;
+    private final TextView tvViewCount;
     private final ImageView shareButton;
     private final LinearLayout btnLikeContainer;
     private final ImageView ivLikeIcon;
     private final TextView tvLikeCount;
     private final View repostHeader;
     private final TextView repostLabel;
+    private final View moreButton;
+    private final View bookmarkButton;
+    private final ImageView bookmarkIcon;
 
     public TweetViewHolder(@NonNull View itemView) {
         super(itemView);
@@ -52,6 +56,7 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         ivRepostIcon = itemView.findViewById(R.id.iv_repost_icon);
         tvReplyCount = itemView.findViewById(R.id.tv_reply_count);
         tvRepostCount = itemView.findViewById(R.id.tv_repost_count);
+        tvViewCount = itemView.findViewById(R.id.tv_view_count);
         shareButton = itemView.findViewById(R.id.tweet_share_button);
 
         btnLikeContainer = itemView.findViewById(R.id.btn_like_container);
@@ -60,6 +65,9 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
 
         repostHeader = itemView.findViewById(R.id.tweet_repost_header);
         repostLabel = itemView.findViewById(R.id.tweet_repost_label);
+        moreButton = itemView.findViewById(R.id.tweet_more_button);
+        bookmarkButton = itemView.findViewById(R.id.btn_bookmark_container);
+        bookmarkIcon = itemView.findViewById(R.id.iv_bookmark_icon);
     }
 
     public void bind(Tweet tweet) {
@@ -163,6 +171,12 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
         updateLikeUI(tweet.isLikedByMe());
         updateReplyUI(tweet.getReplyCount());
         updateRepostUI(tweet.isRepostedByMe(), tweet.getRepostCount());
+        tvViewCount.setText(TimeUtils.compactCount(tweet.getViewCount()));
+        bookmarkIcon.setImageResource(
+                tweet.isBookmarkedByMe()
+                        ? R.drawable.ui_icon_bookmark_filled
+                        : R.drawable.ui_icon_bookmark
+        );
     }
 
     // A zero count is hidden, like on Twitter
@@ -202,6 +216,14 @@ public class TweetViewHolder extends RecyclerView.ViewHolder {
 
     public void setOnShareClickListener(View.OnClickListener listener) {
         shareButton.setOnClickListener(listener);
+    }
+
+    public void setOnMoreClickListener(View.OnClickListener listener) {
+        moreButton.setOnClickListener(listener);
+    }
+
+    public void setOnBookmarkClickListener(View.OnClickListener listener) {
+        bookmarkButton.setOnClickListener(listener);
     }
 
     public void setOnTweetClickListener(View.OnClickListener listener) {

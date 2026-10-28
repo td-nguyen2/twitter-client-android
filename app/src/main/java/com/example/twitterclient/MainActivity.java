@@ -15,6 +15,7 @@ import com.example.twitterclient.ui.auth.LoginFragment;
 import com.example.twitterclient.ui.auth.RegisterFragment;
 import com.example.twitterclient.ui.notifications.NotificationsFragment;
 import com.example.twitterclient.ui.profile.ProfileFragment;
+import com.example.twitterclient.ui.profile.SavedTweetsFragment;
 import com.example.twitterclient.ui.timeline.PostDetailFragment;
 import com.example.twitterclient.ui.timeline.TimelineFragment;
 
@@ -75,6 +76,14 @@ public class MainActivity extends AppCompatActivity {
 
     public void showUserProfile(String username) {
         openFragment(ProfileFragment.forUsername(username));
+    }
+
+    public void showSavedTweets() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, new SavedTweetsFragment())
+                .addToBackStack(null)
+                .commit();
     }
 
     public void showLogin() {

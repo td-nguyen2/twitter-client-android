@@ -61,10 +61,17 @@ public class PostDetailFragment extends Fragment {
 
     private ApiService apiService;
     private Tweet tweet;
+    private Tweet originatingTweet;
 
     private ScrollView scroll;
+    private View postState;
+    private View postLoading;
+    private TextView postStateMessage;
+    private View postRetry;
     private LinearLayout repliesContainer;
     private TextView repliesEmpty;
+    private View repliesLoading;
+    private View repliesError;
 
     private EditText replyInput;
     private TextView replyButton;
@@ -87,8 +94,10 @@ public class PostDetailFragment extends Fragment {
     private TextView statReposts;
     private TextView statReplies;
     private TextView statLikes;
+    private TextView statViews;
     private ImageView repostIcon;
     private ImageView likeIcon;
+    private ImageView bookmarkIcon;
     private TextView replyingToLabel;
 
     /*
@@ -163,6 +172,7 @@ public class PostDetailFragment extends Fragment {
 
         if (passed instanceof Tweet) {
             tweet = (Tweet) passed;
+            originatingTweet = tweet;
         } else if (idOnly > 0) {
             // Placeholder: hidden until the server answers
             tweet = new Tweet(idOnly, "", "", "");
@@ -176,6 +186,14 @@ public class PostDetailFragment extends Fragment {
         apiService = new ApiService(requireContext());
 
         scroll = view.findViewById(R.id.detail_scroll);
+        postState = view.findViewById(R.id.detail_post_state);
+        postLoading = view.findViewById(R.id.detail_post_loading);
+        postStateMessage = view.findViewById(R.id.detail_post_state_message);
+        postRetry = view.findViewById(R.id.detail_post_retry);
+        postRetry.setOnClickListener(v -> {
+            showPostLoading();
+            refreshTweet(true);
+        });
         avatar = view.findViewById(R.id.detail_avatar);
         displayName = view.findViewById(R.id.detail_display_name);
         username = view.findViewById(R.id.detail_username);
@@ -188,9 +206,11 @@ public class PostDetailFragment extends Fragment {
         statReposts = view.findViewById(R.id.detail_stat_reposts);
         statReplies = view.findViewById(R.id.detail_stat_replies);
         statLikes = view.findViewById(R.id.detail_stat_likes);
+        statViews = view.findViewById(R.id.detail_stat_views);
 
         repostIcon = view.findViewById(R.id.detail_repost_icon);
         likeIcon = view.findViewById(R.id.detail_like_icon);
+        bookmarkIcon = view.findViewById(R.id.detail_bookmark_icon);
 
         replyInput = view.findViewById(R.id.reply_input);
         replyButton = view.findViewById(R.id.reply_button);
@@ -202,9 +222,25 @@ public class PostDetailFragment extends Fragment {
 
         repliesContainer = view.findViewById(R.id.replies_container);
         repliesEmpty = view.findViewById(R.id.detail_replies_empty);
+        repliesLoading = view.findViewById(R.id.detail_replies_loading);
+        repliesError = view.findViewById(R.id.detail_replies_error);
+        view.findViewById(R.id.detail_replies_retry).setOnClickListener(v -> loadReplies());
 
         view.findViewById(R.id.detail_back_button).setOnClickListener(v ->
                 requireActivity().getSupportFragmentManager().popBackStack()
+        );
+        view.findViewById(R.id.detail_more_button).setOnClickListener(v ->
+                TweetActions.showBookmarkMenu(
+                        requireContext(),
+                        v,
+                        tweet,
+                        changed -> {
+                            if (originatingTweet != null) {
+                                originatingTweet.setBookmarkedByMe(changed.isBookmarkedByMe());
+                            }
+                            bindStats();
+                        }
+                )
         );
 
         // Tapping the author opens their profile
@@ -230,6 +266,20 @@ public class PostDetailFragment extends Fragment {
 
         view.findViewById(R.id.detail_like_container)
                 .setOnClickListener(v -> toggleLike());
+
+        view.findViewById(R.id.detail_bookmark_container).setOnClickListener(v ->
+                TweetActions.setBookmarked(
+                        requireContext(),
+                        tweet,
+                        !tweet.isBookmarkedByMe(),
+                        changed -> {
+                            if (originatingTweet != null) {
+                                originatingTweet.setBookmarkedByMe(changed.isBookmarkedByMe());
+                            }
+                            bindStats();
+                        }
+                )
+        );
 
         view.findViewById(R.id.detail_share_container)
                 .setOnClickListener(v ->
@@ -275,9 +325,11 @@ public class PostDetailFragment extends Fragment {
 
         if (waitForServer) {
             scroll.setVisibility(View.INVISIBLE);
+            showPostLoading();
         }
 
         bindTweet();
+        recordPostView();
         refreshTweet(waitForServer);
 
         // With only an id we need the author first ("Replying to @author")
@@ -346,10 +398,15 @@ public class PostDetailFragment extends Fragment {
                 likes == 1 ? "Like" : "Likes"
         );
 
-        boolean anyStat = reposts > 0 || replies > 0 || likes > 0;
+        int views = tweet.getViewCount();
+        setStat(statViews, views, views == 1 ? "View" : "Views");
+        if (views == 0) {
+            statViews.setText("0 Views");
+            statViews.setVisibility(View.VISIBLE);
+        }
 
-        statsRow.setVisibility(anyStat ? View.VISIBLE : View.GONE);
-        statsDivider.setVisibility(anyStat ? View.VISIBLE : View.GONE);
+        statsRow.setVisibility(View.VISIBLE);
+        statsDivider.setVisibility(View.VISIBLE);
 
         repostIcon.setImageTintList(ColorStateList.valueOf(
                 Color.parseColor(
@@ -362,6 +419,37 @@ public class PostDetailFragment extends Fragment {
                         tweet.isLikedByMe() ? "#F91880" : "#536471"
                 )
         ));
+
+        bookmarkIcon.setImageResource(
+                tweet.isBookmarkedByMe()
+                        ? R.drawable.ui_icon_bookmark_filled
+                        : R.drawable.ui_icon_bookmark
+        );
+        bookmarkIcon.setImageTintList(ColorStateList.valueOf(Color.parseColor(
+                tweet.isBookmarkedByMe() ? "#1D9BF0" : "#536471"
+        )));
+    }
+
+    private void recordPostView() {
+        if (tweet == null || tweet.getId() <= 0) {
+            return;
+        }
+
+        apiService.recordPostView(
+                tweet.getId(),
+                response -> {
+                    if (!isAdded() || tweet == null) {
+                        return;
+                    }
+
+                    tweet.setViewCount(response.optInt("viewCount", tweet.getViewCount()));
+                    if (originatingTweet != null) {
+                        originatingTweet.setViewCount(tweet.getViewCount());
+                    }
+                    bindStats();
+                },
+                error -> { /* Keep the last known count if view tracking is unavailable. */ }
+        );
     }
 
     // "12 Likes" with the number in bold dark text, hidden at zero
@@ -400,6 +488,10 @@ public class PostDetailFragment extends Fragment {
             return;
         }
 
+        if (waitForServer) {
+            showPostLoading();
+        }
+
         apiService.getPost(
                 tweet.getId(),
                 response -> {
@@ -415,6 +507,9 @@ public class PostDetailFragment extends Fragment {
 
                     try {
                         tweet = new Tweet(post);
+                        if (originatingTweet != null) {
+                            originatingTweet.copyStatsFrom(tweet);
+                        }
                         bindTweet();
 
                         replyingToLabel.setText(
@@ -422,6 +517,9 @@ public class PostDetailFragment extends Fragment {
                         );
 
                         scroll.setVisibility(View.VISIBLE);
+                        postState.setVisibility(View.GONE);
+                        setReplyComposerEnabled(true);
+                        updateReplyButton();
 
                         if (waitForServer) {
                             loadReplies();
@@ -436,13 +534,31 @@ public class PostDetailFragment extends Fragment {
                     }
 
                     if (waitForServer) {
-                        showError("Could not open this post", error);
-                        requireActivity()
-                                .getSupportFragmentManager()
-                                .popBackStack();
+                        showPostError();
                     }
                 }
         );
+    }
+
+    private void showPostLoading() {
+        postState.setVisibility(View.VISIBLE);
+        postLoading.setVisibility(View.VISIBLE);
+        postStateMessage.setText("Loading post…");
+        postRetry.setVisibility(View.GONE);
+        setReplyComposerEnabled(false);
+    }
+
+    private void showPostError() {
+        postState.setVisibility(View.VISIBLE);
+        postLoading.setVisibility(View.GONE);
+        postStateMessage.setText("Couldn’t load this post. Check your connection and try again.");
+        postRetry.setVisibility(View.VISIBLE);
+    }
+
+    private void setReplyComposerEnabled(boolean enabled) {
+        replyInput.setEnabled(enabled);
+        replyButton.setEnabled(enabled && !sendingReply);
+        replyMediaButton.setEnabled(enabled && !sendingReply);
     }
 
     private void toggleLike() {
@@ -504,6 +620,7 @@ public class PostDetailFragment extends Fragment {
     // ---------------------------------------------------------------- replies
 
     private void loadReplies() {
+        showRepliesLoading();
         apiService.getReplies(
                 tweet.getId(),
                 response -> {
@@ -514,11 +631,7 @@ public class PostDetailFragment extends Fragment {
                     JSONArray replies = response.optJSONArray("replies");
 
                     if (replies == null) {
-                        Toast.makeText(
-                                requireContext(),
-                                "Unexpected replies response from server",
-                                Toast.LENGTH_SHORT
-                        ).show();
+                        showRepliesError();
                         return;
                     }
 
@@ -528,8 +641,30 @@ public class PostDetailFragment extends Fragment {
                     tweet.setReplyCount(replies.length());
                     bindStats();
                 },
-                error -> showError("Could not load replies", error)
+                error -> {
+                    if (isAdded()) {
+                        showRepliesError();
+                    }
+                }
         );
+    }
+
+    private void showRepliesLoading() {
+        repliesLoading.setVisibility(View.VISIBLE);
+        repliesError.setVisibility(View.GONE);
+        repliesEmpty.setVisibility(View.GONE);
+        repliesContainer.setVisibility(View.GONE);
+    }
+
+    private void showRepliesError() {
+        if (repliesLoading == null || repliesError == null
+                || repliesEmpty == null || repliesContainer == null) {
+            return;
+        }
+        repliesLoading.setVisibility(View.GONE);
+        repliesError.setVisibility(View.VISIBLE);
+        repliesEmpty.setVisibility(View.GONE);
+        repliesContainer.setVisibility(View.GONE);
     }
 
     private void displayReplies(JSONArray replies) {
@@ -618,10 +753,17 @@ public class PostDetailFragment extends Fragment {
     }
 
     private void updateEmptyState() {
+        repliesLoading.setVisibility(View.GONE);
+        repliesError.setVisibility(View.GONE);
         repliesEmpty.setVisibility(
                 repliesContainer.getChildCount() == 0
                         ? View.VISIBLE
                         : View.GONE
+        );
+        repliesContainer.setVisibility(
+                repliesContainer.getChildCount() == 0
+                        ? View.GONE
+                        : View.VISIBLE
         );
     }
 

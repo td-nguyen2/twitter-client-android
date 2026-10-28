@@ -166,6 +166,59 @@
             android:padding="32dp"
             android:textSize="15sp" android:textColor="#536471"
             android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/timeline_loading_state"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:background="#FFFFFF"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:indeterminateTint="#1D9BF0" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Loading posts…"
+                android:textColor="#536471"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/timeline_error_state"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:background="#FFFFFF"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/timeline_error_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Couldn’t load posts. Check your connection and try again."
+                android:textColor="#536471"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/timeline_retry_button"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginTop="12dp"
+                android:text="Try again"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#1D9BF0" />
+        </LinearLayout>
     </FrameLayout>
 
     <!-- Bottom navigation: Home, Notifications and Profile are wired up -->

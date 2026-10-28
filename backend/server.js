@@ -187,6 +187,24 @@ async function initSocialTables() {
             )
         `);
         await db.execute(`
+            CREATE TABLE IF NOT EXISTS post_views (
+                user_id INT NOT NULL,
+                post_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, post_id),
+                INDEX idx_post_views_post (post_id)
+            )
+        `);
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS post_bookmarks (
+                user_id INT NOT NULL,
+                post_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, post_id),
+                INDEX idx_post_bookmarks_user (user_id, created_at)
+            )
+        `);
+        await db.execute(`
             CREATE TABLE IF NOT EXISTS post_replies (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 post_id INT NOT NULL,
@@ -203,7 +221,7 @@ async function initSocialTables() {
         } catch (alterError) {
             if (alterError.errno !== 1060) throw alterError;
         }
-        console.log("Social tables (likes, follows, notifications, reposts, replies) verified!");
+        console.log("Social tables (likes, follows, notifications, reposts, replies, views, bookmarks) verified!");
     } catch (err) {
         console.error("Failed to init social tables:", err.message);
     }
@@ -213,7 +231,7 @@ initSocialTables();
 /*
  * Shared SELECT used by every list of posts (For you, Following, profile)
  * and by the single-post endpoint, so all of them return the same fields:
- * likeCount, replyCount, repostCount, likedByMe, repostedByMe.
+ * likeCount, replyCount, repostCount, viewCount, likedByMe, repostedByMe, bookmarkedByMe.
  * `userId` comes from a verified JWT and is forced to a number.
  */
 function postColumns(userId) {
@@ -225,10 +243,12 @@ function postColumns(userId) {
             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likeCount,
             (SELECT COUNT(*) FROM post_replies prl WHERE prl.post_id = p.id) AS replyCount,
             (SELECT COUNT(*) FROM post_reposts prp WHERE prp.post_id = p.id) AS repostCount,
+            (SELECT COUNT(*) FROM post_views pv WHERE pv.post_id = p.id) AS viewCount,
             ${me ? `EXISTS(SELECT 1 FROM post_likes pl2 WHERE pl2.post_id = p.id AND pl2.user_id = ${me})` : "0"} AS likedByMe,
             ${me ? `EXISTS(SELECT 1 FROM post_reposts prp2
                            JOIN users ru2 ON ru2.username = prp2.username
-                           WHERE prp2.post_id = p.id AND ru2.id = ${me})` : "0"} AS repostedByMe`;
+                           WHERE prp2.post_id = p.id AND ru2.id = ${me})` : "0"} AS repostedByMe,
+            ${me ? `EXISTS(SELECT 1 FROM post_bookmarks pb WHERE pb.post_id = p.id AND pb.user_id = ${me})` : "0"} AS bookmarkedByMe`;
 }
 
 /*
@@ -1074,6 +1094,105 @@ app.get("/api/posts/:id", async (req, res) => {
     } catch (error) {
         console.error("Get post error:", error.message);
         return res.status(500).json({ error: "Unable to retrieve post" });
+    }
+});
+
+// Count one view per signed-in account and post.
+app.post("/api/posts/:id/view", requireAuth, async (req, res) => {
+    const postId = Number(req.params.id);
+
+    if (!Number.isSafeInteger(postId) || postId <= 0) {
+        return res.status(400).json({ error: "Invalid post ID" });
+    }
+
+    try {
+        const [posts] = await db.execute(
+            "SELECT id FROM posts WHERE id = ?",
+            [postId]
+        );
+
+        if (posts.length === 0) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        await db.execute(
+            "INSERT IGNORE INTO post_views (user_id, post_id) VALUES (?, ?)",
+            [req.authUser.id, postId]
+        );
+
+        const [[counts]] = await db.execute(
+            "SELECT COUNT(*) AS viewCount FROM post_views WHERE post_id = ?",
+            [postId]
+        );
+
+        return res.json({ viewCount: counts.viewCount });
+    } catch (error) {
+        console.error("Record post view error:", error.message);
+        return res.status(500).json({ error: "Unable to record post view" });
+    }
+});
+
+/* ================= BOOKMARK API ================= */
+
+app.get("/api/bookmarks", requireAuth, async (req, res) => {
+    try {
+        const [posts] = await db.execute(
+            `SELECT ${postColumns(req.authUser.id)}, b.created_at AS savedAt
+             FROM post_bookmarks b
+             JOIN posts p ON p.id = b.post_id
+             LEFT JOIN users u ON u.username = p.username
+             WHERE b.user_id = ?
+             ORDER BY b.created_at DESC, p.id DESC`,
+            [req.authUser.id]
+        );
+
+        return res.json({ posts });
+    } catch (error) {
+        console.error("Get bookmarks error:", error.message);
+        return res.status(500).json({ error: "Unable to load saved posts" });
+    }
+});
+
+app.post("/api/posts/:id/bookmark", requireAuth, async (req, res) => {
+    const postId = Number(req.params.id);
+
+    if (!Number.isSafeInteger(postId) || postId <= 0) {
+        return res.status(400).json({ error: "Invalid post ID" });
+    }
+
+    try {
+        const [posts] = await db.execute("SELECT id FROM posts WHERE id = ?", [postId]);
+        if (posts.length === 0) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        await db.execute(
+            "INSERT IGNORE INTO post_bookmarks (user_id, post_id) VALUES (?, ?)",
+            [req.authUser.id, postId]
+        );
+        return res.json({ isBookmarked: true });
+    } catch (error) {
+        console.error("Save bookmark error:", error.message);
+        return res.status(500).json({ error: "Unable to save post" });
+    }
+});
+
+app.delete("/api/posts/:id/bookmark", requireAuth, async (req, res) => {
+    const postId = Number(req.params.id);
+
+    if (!Number.isSafeInteger(postId) || postId <= 0) {
+        return res.status(400).json({ error: "Invalid post ID" });
+    }
+
+    try {
+        await db.execute(
+            "DELETE FROM post_bookmarks WHERE user_id = ? AND post_id = ?",
+            [req.authUser.id, postId]
+        );
+        return res.json({ isBookmarked: false });
+    } catch (error) {
+        console.error("Remove bookmark error:", error.message);
+        return res.status(500).json({ error: "Unable to remove saved post" });
     }
 });
 

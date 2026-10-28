@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -18,7 +19,9 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDialog;
+import android.widget.PopupMenu;
 
+import com.bumptech.glide.Glide;
 import com.android.volley.VolleyError;
 import com.example.twitterclient.R;
 import com.example.twitterclient.auth.SessionManager;
@@ -55,6 +58,7 @@ public final class TweetActions {
 
     // Posts with a repost request on the way (ignore taps until it answers)
     private static final Set<Long> repostsInFlight = new HashSet<>();
+    private static final Set<Long> bookmarksInFlight = new HashSet<>();
 
     private TweetActions() {
     }
@@ -187,6 +191,70 @@ public final class TweetActions {
 
     // ------------------------------------------------------------------- reply
 
+    /** Twitter-style overflow action for saving a post to the current account. */
+    public static void showBookmarkMenu(
+            Context context,
+            View anchor,
+            Tweet tweet,
+            OnChanged onChanged
+    ) {
+        if (!requireLogin(context, "save posts")) {
+            return;
+        }
+
+        PopupMenu popup = new PopupMenu(context, anchor);
+        popup.getMenu().add(
+                Menu.NONE,
+                1,
+                Menu.NONE,
+                tweet.isBookmarkedByMe() ? "Remove from Bookmarks" : "Bookmark"
+        );
+        popup.setOnMenuItemClickListener(item -> {
+            setBookmarked(context, tweet, !tweet.isBookmarkedByMe(), onChanged);
+            return true;
+        });
+        popup.show();
+    }
+
+    public static void setBookmarked(
+            Context context,
+            Tweet tweet,
+            boolean bookmarked,
+            OnChanged onChanged
+    ) {
+        if (!requireLogin(context, "save posts")
+                || !bookmarksInFlight.add(tweet.getId())) {
+            return;
+        }
+
+        ApiService service = api(context);
+        com.android.volley.Response.Listener<JSONObject> success = response -> {
+            bookmarksInFlight.remove(tweet.getId());
+            tweet.setBookmarkedByMe(response.optBoolean("isBookmarked", bookmarked));
+            notifyChanged(onChanged, tweet);
+            Toast.makeText(
+                    context,
+                    tweet.isBookmarkedByMe() ? "Added to Bookmarks" : "Removed from Bookmarks",
+                    Toast.LENGTH_SHORT
+            ).show();
+        };
+
+        com.android.volley.Response.ErrorListener failure = error -> {
+            bookmarksInFlight.remove(tweet.getId());
+            Toast.makeText(
+                    context,
+                    "Could not update Bookmarks. Please try again.",
+                    Toast.LENGTH_SHORT
+            ).show();
+        };
+
+        if (bookmarked) {
+            service.saveBookmark(tweet.getId(), success, failure);
+        } else {
+            service.removeBookmark(tweet.getId(), success, failure);
+        }
+    }
+
     /**
      * Full-screen reply composer: the tweet you answer, "Replying to @user",
      * and a box with a 280-character counter.
@@ -217,6 +285,7 @@ public final class TweetActions {
         TextView counter = dialog.findViewById(R.id.reply_dialog_counter);
         EditText input = dialog.findViewById(R.id.reply_dialog_input);
         ImageView originalAvatar = dialog.findViewById(R.id.reply_original_avatar);
+        ImageView originalMedia = dialog.findViewById(R.id.reply_original_media);
         ImageView myAvatar = dialog.findViewById(R.id.reply_my_avatar);
         TextView originalName = dialog.findViewById(R.id.reply_original_name);
         TextView originalUsername = dialog.findViewById(R.id.reply_original_username);
@@ -224,7 +293,7 @@ public final class TweetActions {
         TextView replyingTo = dialog.findViewById(R.id.reply_replying_to);
 
         if (cancel == null || send == null || counter == null || input == null
-                || originalAvatar == null || myAvatar == null || originalName == null
+                || originalAvatar == null || originalMedia == null || myAvatar == null || originalName == null
                 || originalUsername == null || originalText == null || replyingTo == null) {
             return;
         }
@@ -243,6 +312,18 @@ public final class TweetActions {
             originalText.setVisibility(View.GONE);
         } else {
             originalText.setText(originalContent);
+            originalText.setVisibility(View.VISIBLE);
+        }
+
+        String originalMediaUrl = tweet.getMediaUrl();
+        if (originalMediaUrl == null || originalMediaUrl.trim().isEmpty()) {
+            Glide.with(originalMedia).clear(originalMedia);
+            originalMedia.setVisibility(View.GONE);
+        } else {
+            originalMedia.setVisibility(View.VISIBLE);
+            Glide.with(originalMedia)
+                    .load(ImageUtils.fullUrl(originalMediaUrl))
+                    .into(originalMedia);
         }
         replyingTo.setText(UiText.replyingTo(tweet.getUsername()));
 

@@ -164,10 +164,17 @@ public class ProfileFragment extends Fragment {
         Button changePasswordButton = view.findViewById(R.id.buttonChangePassword);
         changePasswordButton.setOnClickListener(v -> showChangePasswordDialog());
 
+        View savedTweetsButton = view.findViewById(R.id.buttonSavedTweets);
+        savedTweetsButton.setOnClickListener(v ->
+                ((MainActivity) requireActivity()).showSavedTweets());
+
         String selectedUsername = null;
         if (getArguments() != null) {
             selectedUsername = getArguments().getString(ARG_USERNAME);
         }
+        savedTweetsButton.setVisibility(
+                selectedUsername == null ? View.VISIBLE : View.GONE
+        );
 
         if (selectedUsername == null) {
             loadMyProfile();

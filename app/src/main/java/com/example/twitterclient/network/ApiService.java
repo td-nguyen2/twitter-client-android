@@ -151,6 +151,81 @@ public class ApiService {
         queue.add(request);
     }
 
+    // Record one view per signed-in account and post.
+    public void recordPostView(
+            long postId,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure) {
+
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.POST,
+                BASE_URL + "/api/posts/" + postId + "/view",
+                new JSONObject(),
+                success,
+                failure
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                return getAuthHeaders();
+            }
+        };
+
+        queue.add(request);
+    }
+
+    public void getBookmarks(
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure) {
+
+        JsonObjectRequest request = new JsonObjectRequest(
+                Request.Method.GET,
+                BASE_URL + "/api/bookmarks",
+                null,
+                success,
+                failure
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                return getAuthHeaders();
+            }
+        };
+        queue.add(request);
+    }
+
+    public void saveBookmark(
+            long postId,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure) {
+        bookmarkRequest(Request.Method.POST, postId, success, failure);
+    }
+
+    public void removeBookmark(
+            long postId,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure) {
+        bookmarkRequest(Request.Method.DELETE, postId, success, failure);
+    }
+
+    private void bookmarkRequest(
+            int method,
+            long postId,
+            Response.Listener<JSONObject> success,
+            Response.ErrorListener failure) {
+        JsonObjectRequest request = new JsonObjectRequest(
+                method,
+                BASE_URL + "/api/posts/" + postId + "/bookmark",
+                new JSONObject(),
+                success,
+                failure
+        ) {
+            @Override
+            public Map<String, String> getHeaders() {
+                return getAuthHeaders();
+            }
+        };
+        queue.add(request);
+    }
+
     // Get replies for a post
     public void getReplies(
             long postId,
