@@ -36,36 +36,6 @@ public class MainActivity extends AppCompatActivity {
                 showTimeline();
             } else {
                 showLogin();
-
-                // TEMPORARY TEST: Open Post View without logging in
-                testButton = new Button(this);
-                testButton.setText("Test Post View");
-
-                FrameLayout container =
-                        findViewById(R.id.fragment_container);
-
-                FrameLayout.LayoutParams params =
-                        new FrameLayout.LayoutParams(
-                                FrameLayout.LayoutParams.WRAP_CONTENT,
-                                FrameLayout.LayoutParams.WRAP_CONTENT
-                        );
-
-                params.gravity =
-                        Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-                params.bottomMargin = 40;
-
-                container.addView(testButton, params);
-
-                testButton.setOnClickListener(v -> {
-                    Tweet sampleTweet = new Tweet(
-                            2L,
-                            "Demo User",
-                            "demo_user",
-                            "This is a test post for Post View and Replies."
-                    );
-
-                    showPostDetail(sampleTweet);
-                });
             }
         }
     }
